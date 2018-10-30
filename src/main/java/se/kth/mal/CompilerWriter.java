@@ -39,24 +39,24 @@ public class CompilerWriter {
    Integer              associationIndex;
 
    private String package2path(String packageName) throws IllegalArgumentException {
-       if (!packageName.matches("\\w+(\\.\\w+)*$")) {
-           throw(new IllegalArgumentException("'" + packageName + "' is not a valid package name"));
-       }
+      if (!packageName.matches("\\w+(\\.\\w+)*$")) {
+         throw (new IllegalArgumentException("'" + packageName + "' is not a valid package name"));
+      }
 
-       return packageName.replace('.', File.separatorChar);
+      return packageName.replace('.', File.separatorChar);
    }
 
-   public CompilerWriter(String securiLangFolder, String securiLangFile, String testCasesFolder, String javaFolder, String packageName, String jsonFolder) throws IOException, IllegalArgumentException {
+   public CompilerWriter(String securiLangFolder, String securiLangFile, String testCasesFolder, String javaFolder, String packageName, String jsonFolder)
+         throws IOException, IllegalArgumentException {
       this.securiLangFolder = securiLangFolder;
       this.securiLangFile = securiLangFile;
       this.testCasesFolder = testCasesFolder;
 
       String packagePath = package2path(packageName);
       model = new CompilerModel(securiLangFolder, securiLangFile);
-		model.printModel();
       writeD3(jsonFolder, securiLangFile);
       writeJava(javaFolder, packageName, packagePath);
-      PrintTTCFileTemplate.writeTTCConfigFile(jsonFolder + "/attackerProfile.ttc", securiLangFolder,  securiLangFile);
+      PrintTTCFileTemplate.writeTTCConfigFile(jsonFolder + "/attackerProfile.ttc", securiLangFolder, securiLangFile);
    }
 
    private String capitalize(final String line) {
@@ -92,13 +92,13 @@ public class CompilerWriter {
          writeToJsonStringln("{");
          writeToJsonStringln(" \"name\": \"securiLang\",");
          writeToJsonStringln(" \"children\": [");
-         for (CompilerModel.Asset asset : model.assets) {
+         for (Asset asset : model.getAssets()) {
 
             writeToJsonStringln("  {");
             writeToJsonStringln("   \"name\": \"" + asset.name + "\",");
             if (asset.attackSteps.size() > 0) {
                writeToJsonStringln("   \"children\": [");
-               for (CompilerModel.AttackStep attackStep : asset.attackSteps) {
+               for (AttackStep attackStep : asset.attackSteps) {
                   writeToJsonStringln("    {");
                   writeToJsonStringln("     \"name\": \"" + attackStep.name + "\",");
                   if (attackStep.attackStepType.equals("#") || attackStep.attackStepType.equals("3") || attackStep.attackStepType.equals("E")) {
@@ -112,10 +112,10 @@ public class CompilerWriter {
                         writeToJsonStringln("     \"type\": \"or\",");
                      }
                   }
-                  CompilerModel.AttackStep superAttackStep = attackStep.getSuper();
+                  AttackStep superAttackStep = attackStep.getSuper();
                   if (attackStep.childPointers.size() > 0 || superAttackStep != null) {
                      writeToJsonStringln("     \"targets\": [");
-                     for (CompilerModel.AttackStepPointer childPointer : attackStep.childPointers) {
+                     for (AttackStepPointer childPointer : attackStep.childPointers) {
                         writeToJsonStringln("      {\"name\": \"" + childPointer.attackStep.name + "\", \"entity_name\": \"" + childPointer.attackStep.asset.name + "\", \"size\": 4000},");
                      }
                      if (superAttackStep != null) {
@@ -152,12 +152,12 @@ public class CompilerWriter {
 
    private void writeJava(String outputFolder, String packageName, String packagePath) {
 
-	  // Create the path unless it already exists
-	  String path = outputFolder + "/" + packagePath + "/";
-	  (new File(path)).mkdirs();
-	  
-      for (CompilerModel.Asset asset : model.assets) {
-			System.out.print("Writing the Java class corresponding to asset " + asset.name + "\n");
+      // Create the path unless it already exists
+      String path = outputFolder + "/" + packagePath + "/";
+      (new File(path)).mkdirs();
+
+      for (Asset asset : model.getAssets()) {
+         System.out.println("Writing the Java class corresponding to asset " + asset.name);
          String sourceCodeFile = path + asset.name + ".java";
          try {
             writer = new PrintWriter(sourceCodeFile, "UTF-8");
@@ -188,7 +188,7 @@ public class CompilerWriter {
    }
 
    void printPackage(String packageName) {
-       writer.println("package " + packageName + ";\n");
+      writer.println("package " + packageName + ";\n");
    }
 
    void printImports() {
@@ -196,7 +196,7 @@ public class CompilerWriter {
       writer.println(imports);
    }
 
-   void printAssetClassHeaders(CompilerModel.Asset asset) {
+   void printAssetClassHeaders(Asset asset) {
       writer.print("public class " + asset.name);
       if (asset.superAssetName != "") {
          writer.print(" extends " + asset.superAssetName);
@@ -207,8 +207,8 @@ public class CompilerWriter {
       writer.println(" {");
    }
 
-   void printAssociations(CompilerModel.Asset asset) {
-      for (CompilerModel.Association association : model.getAssociations(asset)) {
+   void printAssociations(Asset asset) {
+      for (Association association : model.getAssociations(asset)) {
          if (association.rightMultiplicity.equals("*") || association.rightMultiplicity.equals("1-*")) {
             writer.println("   public AnySet<" + association.rightAssetName + "> " + association.rightRoleName + " = new AnySet<>();");
          }
@@ -221,8 +221,8 @@ public class CompilerWriter {
       writer.println("");
    }
 
-   void printStepAssignments(CompilerModel.Asset asset) {
-      for (CompilerModel.AttackStep attackStep : asset.attackSteps) {
+   void printStepAssignments(Asset asset) {
+      for (AttackStep attackStep : asset.attackSteps) {
          if (attackStep.superAttackStepName.equals("")) {
             writer.print("   public " + capitalize(attackStep.name) + " " + attackStep.name + ";\n");
          }
@@ -230,7 +230,7 @@ public class CompilerWriter {
       writer.println("");
    }
 
-   void printConstructor(CompilerModel.Asset asset) {
+   void printConstructor(Asset asset) {
       String constructorString = "";
       constructorString = sprintConstructorWithDefenseAttributes(asset, false, constructorString);
       constructorString = sprintConstructorWithDefenseAttributes(asset, true, constructorString);
@@ -239,7 +239,7 @@ public class CompilerWriter {
       writer.println(constructorString);
    }
 
-   protected String sprintConstructorWithoutDefenseAttributes(CompilerModel.Asset asset, boolean hasName, String constructorString) {
+   protected String sprintConstructorWithoutDefenseAttributes(Asset asset, boolean hasName, String constructorString) {
       if (!asset.defensesExcludingExistenceRequirements().isEmpty()) {
          constructorString += "   public " + capitalize(asset.name) + "(";
          if (hasName) {
@@ -251,7 +251,7 @@ public class CompilerWriter {
             constructorString += "name, ";
          }
 
-         for (CompilerModel.AttackStep defense : asset.defensesExcludingExistenceRequirements()) {
+         for (AttackStep defense : asset.defensesExcludingExistenceRequirements()) {
             constructorString += "false, ";
          }
          constructorString = constructorString.substring(0, constructorString.length() - 2);
@@ -261,7 +261,7 @@ public class CompilerWriter {
       return constructorString;
    }
 
-   protected String sprintConstructorWithDefenseAttributes(CompilerModel.Asset asset, boolean hasName, String constructorString) {
+   protected String sprintConstructorWithDefenseAttributes(Asset asset, boolean hasName, String constructorString) {
       constructorString += "   public " + capitalize(asset.name) + "(";
       if (hasName) {
          constructorString += "String name";
@@ -277,9 +277,9 @@ public class CompilerWriter {
       return constructorString;
    }
 
-   protected String sprintSuperCall(CompilerModel.Asset asset, boolean hasName, String constructorString) {
+   protected String sprintSuperCall(Asset asset, boolean hasName, String constructorString) {
       constructorString += "      super(";
-      CompilerModel.Asset superAsset = null;
+      Asset superAsset = null;
       if (!asset.superAssetName.equals("")) {
          superAsset = model.getAsset(asset.superAssetName);
       }
@@ -292,7 +292,7 @@ public class CompilerWriter {
          }
       }
       if (!asset.superAssetName.equals("")) {
-         for (CompilerModel.AttackStep defense : superAsset.defensesExcludingExistenceRequirements()) {
+         for (AttackStep defense : superAsset.defensesExcludingExistenceRequirements()) {
             constructorString += defense.name + "State, ";
          }
          if (!superAsset.defensesExcludingExistenceRequirements().isEmpty()) {
@@ -304,10 +304,10 @@ public class CompilerWriter {
       return constructorString;
    }
 
-   protected String sprintDefenseAttributes(CompilerModel.Asset asset, String constructorString) {
+   protected String sprintDefenseAttributes(Asset asset, String constructorString) {
       String attributesString = "";
       if (!asset.defensesExcludingExistenceRequirements().isEmpty()) {
-         for (CompilerModel.AttackStep defense : asset.defensesExcludingExistenceRequirements()) {
+         for (AttackStep defense : asset.defensesExcludingExistenceRequirements()) {
             attributesString += "Boolean " + defense.name + "State, ";
          }
          if (attributesString.length() > 0) {
@@ -317,29 +317,29 @@ public class CompilerWriter {
       return constructorString + attributesString;
    }
 
-   protected String sprintStepCreation(CompilerModel.Asset asset, String constructorString) {
-      for (CompilerModel.AttackStep defense : asset.defenses()) {
-            constructorString += "      if (" + defense.name + " != null) {\n";
-            constructorString += "         AttackStep.allAttackSteps.remove(" + defense.name + ".disable);\n";
-            constructorString += "      }\n";
-            constructorString += "      Defense.allDefenses.remove(" + defense.name + ");\n";
-            constructorString += "      " + defense.name + " = new " + capitalize(defense.name) + "(this.name";
-            if (!defense.hasExistenceRequirements()) {
-               constructorString += ", " + defense.name + "State";
-            }
-            constructorString += ");\n";
+   protected String sprintStepCreation(Asset asset, String constructorString) {
+      for (AttackStep defense : asset.defenses()) {
+         constructorString += "      if (" + defense.name + " != null) {\n";
+         constructorString += "         AttackStep.allAttackSteps.remove(" + defense.name + ".disable);\n";
+         constructorString += "      }\n";
+         constructorString += "      Defense.allDefenses.remove(" + defense.name + ");\n";
+         constructorString += "      " + defense.name + " = new " + capitalize(defense.name) + "(this.name";
+         if (!defense.hasExistenceRequirements()) {
+            constructorString += ", " + defense.name + "State";
+         }
+         constructorString += ");\n";
       }
-      for (CompilerModel.AttackStep attackStep : asset.attackSteps) {
+      for (AttackStep attackStep : asset.attackSteps) {
          if (!asset.defenses().contains(attackStep)) {
-               constructorString += "      AttackStep.allAttackSteps.remove(" + attackStep.name + ");\n";
-               constructorString += "      " + attackStep.name + " = new " + capitalize(attackStep.name) + "(this.name);\n";
+            constructorString += "      AttackStep.allAttackSteps.remove(" + attackStep.name + ");\n";
+            constructorString += "      " + attackStep.name + " = new " + capitalize(attackStep.name) + "(this.name);\n";
          }
       }
       return constructorString;
    }
 
-   void printStepDefinitions(CompilerModel.Asset asset) {
-      for (CompilerModel.AttackStep attackStep : asset.attackSteps) {
+   void printStepDefinitions(Asset asset) {
+      for (AttackStep attackStep : asset.attackSteps) {
          if (attackStep.attackStepType.equals("#") || attackStep.attackStepType.equals("E") || attackStep.attackStepType.equals("3")) {
             printDefenseDefinition(attackStep);
          }
@@ -349,7 +349,7 @@ public class CompilerWriter {
       }
    }
 
-   void printDefenseDefinition(CompilerModel.AttackStep attackStep) {
+   void printDefenseDefinition(AttackStep attackStep) {
       printDefenseSignature(attackStep);
       printDefenseConstructor(attackStep);
       printExistenceRequirements(attackStep);
@@ -359,7 +359,7 @@ public class CompilerWriter {
       writer.println("}\n");
    }
 
-   protected void printDisableDeclaration(CompilerModel.AttackStep attackStep) {
+   protected void printDisableDeclaration(AttackStep attackStep) {
       writer.print("   public class Disable extends ");
       if (!attackStep.superAttackStepName.equals("")) {
          writer.print(attackStep.superAttackStepName + ".Disable");
@@ -380,7 +380,7 @@ public class CompilerWriter {
       writer.println("   }");
    }
 
-   protected void printDefenseConstructor(CompilerModel.AttackStep attackStep) {
+   protected void printDefenseConstructor(AttackStep attackStep) {
       writer.print("   public " + capitalize(attackStep.name) + "(String name");
       if (!attackStep.hasExistenceRequirements()) {
          writer.print(", Boolean enabled");
@@ -401,7 +401,7 @@ public class CompilerWriter {
       writer.println("   }\n");
    }
 
-   protected void printDefenseSignature(CompilerModel.AttackStep attackStep) {
+   protected void printDefenseSignature(AttackStep attackStep) {
       writer.print("   public class " + capitalize(attackStep.name) + " extends ");
       if (!attackStep.superAttackStepName.equals("")) {
          writer.println(attackStep.superAttackStepName + " {");
@@ -411,14 +411,14 @@ public class CompilerWriter {
       }
    }
 
-   void printExistenceRequirements(CompilerModel.AttackStep attackStep) {
+   void printExistenceRequirements(AttackStep attackStep) {
       if (!attackStep.existenceRequirementRoles.isEmpty()) {
          writer.println("   @Override");
          writer.println("   public boolean isEnabled() {");
          // The below should be the role name, not the asset name.
          // Furthermore, it should check for empty set rather than == null for
          // multiplicity associations
-         CompilerModel.Association association = model.getConnectedAssociation(attackStep.asset.name, attackStep.existenceRequirementRoles.get(0));
+         Association association = model.getConnectedAssociation(attackStep.asset.name, attackStep.existenceRequirementRoles.get(0));
          assertTrue("Did not find the association from the asset " + attackStep.asset.name + " to the role " + attackStep.existenceRequirementRoles.get(0), association != null);
          String multiplicity = association.targetMultiplicityIncludingInheritance(attackStep.asset);
          if (multiplicity.equals("1") || multiplicity.equals("0-1")) {
@@ -442,7 +442,7 @@ public class CompilerWriter {
 
    }
 
-   void printAttackStepDefinition(CompilerModel.AttackStep attackStep) {
+   void printAttackStepDefinition(AttackStep attackStep) {
       writer.print("   public class " + capitalize(attackStep.name) + " extends ");
       String attackStepTypeString = "";
       if (!attackStep.superAttackStepName.equals("")) {
@@ -473,137 +473,137 @@ public class CompilerWriter {
       writer.println("   }\n");
    }
 
-   void printUpdateChildren(CompilerModel.AttackStep attackStep) {
+   void printUpdateChildren(AttackStep attackStep) {
       if (!attackStep.childPointers.isEmpty()) {
-	      writer.println("      @Override");
-   	   writer.println("      public void updateChildren(Set<AttackStep> activeAttackSteps) {");
-			//writer.println("         super.updateChildren(activeAttackSteps);");
-			String subClassAndAttackStepName;
-      	String childString = "";
-      	for (CompilerModel.AttackStepPointer childPointer : attackStep.childPointers) {
-      	   if (childPointer.subClassName.equals("")) {
-      	      subClassAndAttackStepName = childPointer.attackStep.name;
-      	   }
-      	   else {
-      	      subClassAndAttackStepName = childPointer.subClassName + "." + childPointer.attackStep.name;
-      	   }
-      	   if (childPointer.roleName.equals("this")) {
-      	      childString = subClassAndAttackStepName;
-      	   }
-      	   else {
-      	      childString = childPointer.roleName + "." + subClassAndAttackStepName;
-      	   }
-      	   if (childPointer.multiplicity.equals("0-1") || childPointer.multiplicity.equals("1")) {
-      	      writer.println("         if (" + childPointer.roleName + " != null) {");
-      	      writer.println("            " + childString + ".updateTtc(this, ttc, activeAttackSteps);");
-      	      writer.println("         }");
-      	   }
-      	   if (childPointer.multiplicity.equals("1-*")) {
-      	      writer.println("         for (" + childPointer.attackStep.asset.name + " " + decapitalize(childPointer.attackStep.asset.name) + " : " + childPointer.roleName + ") {");
-      	      writer.println("            " + decapitalize(childPointer.attackStep.asset.name) + "." + subClassAndAttackStepName + ".updateTtc(this, ttc, activeAttackSteps);\n         }");
-      	   }
-      	   if (childPointer.multiplicity.equals("*")) {
-      	      writer.println("         for (" + childPointer.attackStep.asset.name + " " + decapitalize(childPointer.attackStep.asset.name) + " : " + childPointer.roleName + ") {");
-      	      writer.println("            " + decapitalize(childPointer.attackStep.asset.name) + "." + subClassAndAttackStepName + ".updateTtc(this, ttc, activeAttackSteps);\n         }");
-      	   }
-      	}
-      	writer.println("      }\n");
+         writer.println("      @Override");
+         writer.println("      public void updateChildren(Set<AttackStep> activeAttackSteps) {");
+         // writer.println(" super.updateChildren(activeAttackSteps);");
+         String subClassAndAttackStepName;
+         String childString = "";
+         for (AttackStepPointer childPointer : attackStep.childPointers) {
+            if (childPointer.subClassName.equals("")) {
+               subClassAndAttackStepName = childPointer.attackStep.name;
+            }
+            else {
+               subClassAndAttackStepName = childPointer.subClassName + "." + childPointer.attackStep.name;
+            }
+            if (childPointer.roleName.equals("this")) {
+               childString = subClassAndAttackStepName;
+            }
+            else {
+               childString = childPointer.roleName + "." + subClassAndAttackStepName;
+            }
+            if (childPointer.multiplicity.equals("0-1") || childPointer.multiplicity.equals("1")) {
+               writer.println("         if (" + childPointer.roleName + " != null) {");
+               writer.println("            " + childString + ".updateTtc(this, ttc, activeAttackSteps);");
+               writer.println("         }");
+            }
+            if (childPointer.multiplicity.equals("1-*")) {
+               writer.println("         for (" + childPointer.attackStep.asset.name + " " + decapitalize(childPointer.attackStep.asset.name) + " : " + childPointer.roleName + ") {");
+               writer.println("            " + decapitalize(childPointer.attackStep.asset.name) + "." + subClassAndAttackStepName + ".updateTtc(this, ttc, activeAttackSteps);\n         }");
+            }
+            if (childPointer.multiplicity.equals("*")) {
+               writer.println("         for (" + childPointer.attackStep.asset.name + " " + decapitalize(childPointer.attackStep.asset.name) + " : " + childPointer.roleName + ") {");
+               writer.println("            " + decapitalize(childPointer.attackStep.asset.name) + "." + subClassAndAttackStepName + ".updateTtc(this, ttc, activeAttackSteps);\n         }");
+            }
+         }
+         writer.println("      }\n");
       }
    }
 
-   void printSetExpectedParents(CompilerModel.AttackStep attackStep) {
-		if (!attackStep.parentPointers.isEmpty()) {
-			writer.println("      @Override");
-			writer.println("      protected void setExpectedParents() {");
-			// When an attack step is overridden, the inheriting parents must still be
-			// able to reach it as specified in the super class.
-			
-			if (!attackStep.superAttackStepName.equals("")) {
-				writer.println("         super.setExpectedParents();");
-			}
-			if (attackStep.existenceRequirementRoles.size() > 0) {
-				writer.println("         if (" + attackStep.existenceRequirementRoles.get(0) + " != null) {");
-			}
+   void printSetExpectedParents(AttackStep attackStep) {
+      if (!attackStep.parentPointers.isEmpty()) {
+         writer.println("      @Override");
+         writer.println("      protected void setExpectedParents() {");
+         // When an attack step is overridden, the inheriting parents must still
+         // be
+         // able to reach it as specified in the super class.
 
-			for (CompilerModel.AttackStepPointer parentPointer : attackStep.parentPointers) {
-				String disableString = "";
-				if (parentPointer.attackStep.attackStepType.equals("#") || parentPointer.attackStep.attackStepType.equals("E") || parentPointer.attackStep.attackStepType.equals("3")) {
-					disableString = ".disable";
-				}
-				String parentRoleName = parentPointer.roleName;
-				String parentAssetNameAccordingToAttackStep = parentPointer.attackStep.asset.name;
-				String parentAssetNameAccordingToAssociation = "";
-				if (parentPointer.association != null) {
-					parentAssetNameAccordingToAssociation = parentPointer.association.getAssetName(parentRoleName);
-				}
-				String parentShortStepName = parentPointer.attackStep.name + disableString;
-				String parentString = "";
-				if (parentPointer.attackStep.asset.superAssets().contains(attackStep.asset)) {
-					parentString = parentShortStepName;
-				}
-				else {
-					parentString = parentRoleName + "." + parentShortStepName;
-				}
-				String mainExpressionString = "";
-				if (parentPointer.multiplicity.equals("1")) {
-					if (!parentPointer.attackStep.asset.superAssets().contains(attackStep.asset)) {
-						mainExpressionString += "         if (" + parentRoleName + " != null) {\n";
-						mainExpressionString += "            addExpectedParent(" + parentString + ");\n";
-						mainExpressionString += "         }\n";
-						mainExpressionString += "         else {\n";
-						mainExpressionString += "            System.out.println(\"Error in \" + name + \": Exactly one " + parentRoleName + " must be connected to each " + attackStep.asset.name + "\");\n";
-						mainExpressionString += "         }\n";
-					}
-                    else if (!parentRoleName.isEmpty()){
-                    	mainExpressionString += "         if (" + parentRoleName + " != null) {\n";
-						mainExpressionString += "            addExpectedParent(" + parentRoleName + "." + parentShortStepName + ");\n";
-						mainExpressionString += "         }\n";
-                              }
-					else {
-						mainExpressionString += "         addExpectedParent(" + parentString + ");\n";
-					}
-				}
+         if (!attackStep.superAttackStepName.equals("")) {
+            writer.println("         super.setExpectedParents();");
+         }
+         if (attackStep.existenceRequirementRoles.size() > 0) {
+            writer.println("         if (" + attackStep.existenceRequirementRoles.get(0) + " != null) {");
+         }
 
-				if (parentPointer.multiplicity.equals("0-1")) {
-					mainExpressionString += "         if (" + parentRoleName + " != null) {\n";
-					if (parentAssetNameAccordingToAssociation.equals(parentAssetNameAccordingToAttackStep)) {
-                        if (!parentRoleName.isEmpty())
-                    		mainExpressionString += "            addExpectedParent(" + parentRoleName + "." + parentShortStepName + ");\n";
-                    	else
-							mainExpressionString += "            addExpectedParent(" + parentString + ");\n";
-					}
-					else {
-						mainExpressionString += "            if (" + decapitalize(parentRoleName) + " instanceof " + parentAssetNameAccordingToAttackStep + ") {\n";
-						mainExpressionString += "               addExpectedParent(((" + parentAssetNameAccordingToAttackStep + ")" + decapitalize(parentRoleName) + ")."
-								+ parentShortStepName + ");\n";
-						mainExpressionString += "            }\n";
+         for (AttackStepPointer parentPointer : attackStep.parentPointers) {
+            String disableString = "";
+            if (parentPointer.attackStep.attackStepType.equals("#") || parentPointer.attackStep.attackStepType.equals("E") || parentPointer.attackStep.attackStepType.equals("3")) {
+               disableString = ".disable";
+            }
+            String parentRoleName = parentPointer.roleName;
+            String parentAssetNameAccordingToAttackStep = parentPointer.attackStep.asset.name;
+            String parentAssetNameAccordingToAssociation = "";
+            if (parentPointer.association != null) {
+               parentAssetNameAccordingToAssociation = parentPointer.association.getAssetName(parentRoleName);
+            }
+            String parentShortStepName = parentPointer.attackStep.name + disableString;
+            String parentString = "";
+            if (parentPointer.attackStep.asset.superAssets().contains(attackStep.asset)) {
+               parentString = parentShortStepName;
+            }
+            else {
+               parentString = parentRoleName + "." + parentShortStepName;
+            }
+            String mainExpressionString = "";
+            if (parentPointer.multiplicity.equals("1")) {
+               if (!parentPointer.attackStep.asset.superAssets().contains(attackStep.asset)) {
+                  mainExpressionString += "         if (" + parentRoleName + " != null) {\n";
+                  mainExpressionString += "            addExpectedParent(" + parentString + ");\n";
+                  mainExpressionString += "         }\n";
+                  mainExpressionString += "         else {\n";
+                  mainExpressionString += "            System.out.println(\"Error in \" + name + \": Exactly one " + parentRoleName + " must be connected to each " + attackStep.asset.name + "\");\n";
+                  mainExpressionString += "         }\n";
+               }
+               else if (!parentRoleName.isEmpty()) {
+                  mainExpressionString += "         if (" + parentRoleName + " != null) {\n";
+                  mainExpressionString += "            addExpectedParent(" + parentRoleName + "." + parentShortStepName + ");\n";
+                  mainExpressionString += "         }\n";
+               }
+               else {
+                  mainExpressionString += "         addExpectedParent(" + parentString + ");\n";
+               }
+            }
 
-					}
-					mainExpressionString += "         }\n";
-					// loopString += "else {\n";
-					// loopString += "sample.setConcluded(this, true);\n}\n";
-				}
-				if (parentPointer.multiplicity.equals("*")) {
-					mainExpressionString = loopString(parentAssetNameAccordingToAttackStep, parentAssetNameAccordingToAssociation, parentRoleName, parentShortStepName, mainExpressionString);
-					// loopString += "else {\n";
-					// loopString += "sample.setConcluded(this, true);\n}\n";
-				}
-				if (parentPointer.multiplicity.equals("1-*")) {
-					mainExpressionString += "         if (" + parentRoleName + " != null) {\n";
-					mainExpressionString = loopString(parentAssetNameAccordingToAttackStep, parentAssetNameAccordingToAssociation, parentRoleName, parentShortStepName, mainExpressionString);
-					mainExpressionString += "         }\n";
-					mainExpressionString += "         else {\n";
-					mainExpressionString += "            throw new NullPointerException(\"At least one " + parentRoleName + " must be connected to each " + attackStep.asset.name + "\");\n";
-					mainExpressionString += "         }\n";
-				}
-				writer.println(mainExpressionString);
-			}
-			if (attackStep.existenceRequirementRoles.size() > 0) {
-				writer.println("         }");
-			}
-			writer.println("      }\n");
-   	}
-	}
+            if (parentPointer.multiplicity.equals("0-1")) {
+               mainExpressionString += "         if (" + parentRoleName + " != null) {\n";
+               if (parentAssetNameAccordingToAssociation.equals(parentAssetNameAccordingToAttackStep)) {
+                  if (!parentRoleName.isEmpty())
+                     mainExpressionString += "            addExpectedParent(" + parentRoleName + "." + parentShortStepName + ");\n";
+                  else
+                     mainExpressionString += "            addExpectedParent(" + parentString + ");\n";
+               }
+               else {
+                  mainExpressionString += "            if (" + decapitalize(parentRoleName) + " instanceof " + parentAssetNameAccordingToAttackStep + ") {\n";
+                  mainExpressionString += "               addExpectedParent(((" + parentAssetNameAccordingToAttackStep + ")" + decapitalize(parentRoleName) + ")." + parentShortStepName + ");\n";
+                  mainExpressionString += "            }\n";
+
+               }
+               mainExpressionString += "         }\n";
+               // loopString += "else {\n";
+               // loopString += "sample.setConcluded(this, true);\n}\n";
+            }
+            if (parentPointer.multiplicity.equals("*")) {
+               mainExpressionString = loopString(parentAssetNameAccordingToAttackStep, parentAssetNameAccordingToAssociation, parentRoleName, parentShortStepName, mainExpressionString);
+               // loopString += "else {\n";
+               // loopString += "sample.setConcluded(this, true);\n}\n";
+            }
+            if (parentPointer.multiplicity.equals("1-*")) {
+               mainExpressionString += "         if (" + parentRoleName + " != null) {\n";
+               mainExpressionString = loopString(parentAssetNameAccordingToAttackStep, parentAssetNameAccordingToAssociation, parentRoleName, parentShortStepName, mainExpressionString);
+               mainExpressionString += "         }\n";
+               mainExpressionString += "         else {\n";
+               mainExpressionString += "            throw new NullPointerException(\"At least one " + parentRoleName + " must be connected to each " + attackStep.asset.name + "\");\n";
+               mainExpressionString += "         }\n";
+            }
+            writer.println(mainExpressionString);
+         }
+         if (attackStep.existenceRequirementRoles.size() > 0) {
+            writer.println("         }");
+         }
+         writer.println("      }\n");
+      }
+   }
 
    protected String loopString(String parentAssetNameAccordingToAttackStep, String parentAssetNameAccordingToAssociation, String parentRoleName, String parentShortStepName,
          String mainExpressionString) {
@@ -620,41 +620,41 @@ public class CompilerWriter {
       return mainExpressionString;
    }
 
-   void printLocalTtc(CompilerModel.AttackStep attackStep) {
-		if (attackStep.asset.superAssetName.equals("") || !attackStep.ttcFunction.equals("Default")) {
-			writer.println("      @Override");
-      	writer.println("      public double localTtc() {");
-      	writer.println("         return ttcHashMap.get(\"" + attackStep.asset.name + "." + attackStep.name + "\");");
-      // if (attackStep.ttcFunction.equals("ExponentialDistribution")) {
-      // writer.println(" return " +
-      // attackStep.ttcParameters.get(0).toString() + ";");
-      // }
-      // else {
-      // if (attackStep.ttcFunction.equals("GammaDistribution")) {
-      // writer.println(" return " +
-      // Float.toString((attackStep.ttcParameters.get(0) *
-      // attackStep.ttcParameters.get(1))) + ";");
-      // }
-      // else {
-      // if (attackStep.ttcFunction.equals("BernoulliDistribution")) {
-      // writer.println(" if (" + attackStep.ttcParameters.get(0).toString()
-      // + " > 0.5 ) {");
-      // writer.println(" return oneSecond;\n}");
-      // writer.println(" else {");
-      // writer.println(" return infinity;\n}");
-      // }
-      // else {
-      // assert false : "Unknown distribution for attack step " +
-      // attackStep.asset.name + "." + attackStep.name + ".";
-      // }
-      // }
-      // }
-      	writer.println("      }\n");
+   void printLocalTtc(AttackStep attackStep) {
+      if (attackStep.asset.superAssetName.equals("") || !attackStep.ttcFunction.equals("Default")) {
+         writer.println("      @Override");
+         writer.println("      public double localTtc() {");
+         writer.println("         return ttcHashMap.get(\"" + attackStep.asset.name + "." + attackStep.name + "\");");
+         // if (attackStep.ttcFunction.equals("ExponentialDistribution")) {
+         // writer.println(" return " +
+         // attackStep.ttcParameters.get(0).toString() + ";");
+         // }
+         // else {
+         // if (attackStep.ttcFunction.equals("GammaDistribution")) {
+         // writer.println(" return " +
+         // Float.toString((attackStep.ttcParameters.get(0) *
+         // attackStep.ttcParameters.get(1))) + ";");
+         // }
+         // else {
+         // if (attackStep.ttcFunction.equals("BernoulliDistribution")) {
+         // writer.println(" if (" + attackStep.ttcParameters.get(0).toString()
+         // + " > 0.5 ) {");
+         // writer.println(" return oneSecond;\n}");
+         // writer.println(" else {");
+         // writer.println(" return infinity;\n}");
+         // }
+         // else {
+         // assert false : "Unknown distribution for attack step " +
+         // attackStep.asset.name + "." + attackStep.name + ".";
+         // }
+         // }
+         // }
+         writer.println("      }\n");
       }
    }
 
-   void printConnectionHelpers(CompilerModel.Asset asset) {
-      for (CompilerModel.Association association : asset.getAssociations()) {
+   void printConnectionHelpers(Asset asset) {
+      for (Association association : asset.getAssociations()) {
          String targetAssetName = association.getTargetAssetName(asset);
          String targetRoleName = association.getTargetRoleName(asset);
          String sourceRoleName = association.getSourceRoleName(asset);
@@ -675,10 +675,10 @@ public class CompilerWriter {
       }
    }
 
-   void printGetAssociatedAssetClassName(CompilerModel.Asset asset) {
+   void printGetAssociatedAssetClassName(Asset asset) {
       writer.println("   @Override");
       writer.println("   public String getAssociatedAssetClassName(String roleName) {");
-      for (CompilerModel.Association association : asset.getAssociations()) {
+      for (Association association : asset.getAssociations()) {
          writer.println("      if (roleName.equals(\"" + association.getTargetRoleName(asset) + "\")) {");
          if (association.targetMultiplicity(asset).equals("*") || association.targetMultiplicity(asset).equals("1-*")) {
             writer.println("         for (Object o: " + association.getTargetRoleName(asset) + ") {");
@@ -694,11 +694,11 @@ public class CompilerWriter {
       writer.println("   }");
    }
 
-   void printGetAssociatedAssets(CompilerModel.Asset asset) {
+   void printGetAssociatedAssets(Asset asset) {
       writer.println("   @Override");
       writer.println("   public Set<Asset> getAssociatedAssets(String roleName) {");
       writer.println("      AnySet<Asset> assets = new AnySet<>();");
-      for (CompilerModel.Association association : asset.getAssociationsIncludingInherited()) {
+      for (Association association : asset.getAssociationsIncludingInherited()) {
          writer.println(
                "      if (roleName.equals(\"" + association.getTargetRoleNameIncludingInheritance(asset) + "\")  && " + association.getTargetRoleNameIncludingInheritance(asset) + " != null) {");
          if (association.targetMultiplicityIncludingInheritance(asset).equals("*") || association.targetMultiplicityIncludingInheritance(asset).equals("1-*")) {
@@ -715,11 +715,11 @@ public class CompilerWriter {
       writer.println("   }");
    }
 
-   void printGetAllAssociatedAssets(CompilerModel.Asset asset) {
+   void printGetAllAssociatedAssets(Asset asset) {
       writer.println("   @Override");
       writer.println("   public Set<Asset> getAllAssociatedAssets() {");
       writer.println("      AnySet<Asset> assets = new AnySet<>();");
-      for (CompilerModel.Association association : asset.getAssociationsIncludingInherited()) {
+      for (Association association : asset.getAssociationsIncludingInherited()) {
          if (association.targetMultiplicityIncludingInheritance(asset).equals("*") || association.targetMultiplicityIncludingInheritance(asset).equals("1-*")) {
             writer.println("      assets.addAll(" + association.getTargetRoleNameIncludingInheritance(asset) + ");");
          }

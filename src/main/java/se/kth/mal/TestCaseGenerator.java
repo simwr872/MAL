@@ -13,10 +13,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-import se.kth.mal.CompilerModel.Asset;
-import se.kth.mal.CompilerModel.Association;
-import se.kth.mal.CompilerModel.AttackStep;
-
 public class TestCaseGenerator {
 
    CompilerModel model;
@@ -55,7 +51,7 @@ public class TestCaseGenerator {
       for (Instance instance : instances) {
          List<Association> associations = instance.asset.getAssociationsIncludingInherited();
          for (Association association : associations) {
-            String targetMultiplicity = (String) association.targetMultiplicityIncludingInheritance(instance.asset);
+            String targetMultiplicity = association.targetMultiplicityIncludingInheritance(instance.asset);
             // Find any required associations
             if (targetMultiplicity.equals("1") || targetMultiplicity.equals("1-*")) {
                String targetAssetName = association.getTargetAssetName(instance.asset);

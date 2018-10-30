@@ -1,32 +1,78 @@
 package se.kth.mal;
 
+import java.io.File;
 import java.io.IOException;
 
-import se.kth.mal.CompilerWriter;
-import se.kth.mal.PrintTTCFileTemplate;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+
+import com.foreseeti.generator.SecuriCADCodeGeneratorUsingTemplates;
 
 public class Master {
 
-   public Master(String inFolderPath, String inFileName, String javaFolderPath, String packageName, String jsonFolderPath, boolean generateTestCases,
-         double probabilityOfNonMandatoryNeighbor, double probabilityOfDoubleNeighbor, String assetName) {
+   public Master(String malFilePath, String testsOutFolderPath, String javaOutFolderPath, String packageName, boolean useForeseeti, String visualFolderPath) {
       try {
-         CompilerWriter compilerWriter = new CompilerWriter(inFolderPath, inFileName, inFolderPath, javaFolderPath, packageName, jsonFolderPath);
+         if (useForeseeti) {
+            SecuriCADCodeGeneratorUsingTemplates generator = new SecuriCADCodeGeneratorUsingTemplates(malFilePath, testsOutFolderPath, javaOutFolderPath, packageName, visualFolderPath);
+            generator.generate();
+         }
+         else {
+            File malFile = new File(malFilePath);
+            String inFolderPath = malFile.getParentFile().getAbsolutePath();
+            String inFileName = malFile.getName();
+            new CompilerWriter(inFolderPath, inFileName, inFolderPath, javaOutFolderPath, packageName, javaOutFolderPath);
+         }
       }
-      catch (IOException e) {
-         // TODO Auto-generated catch block
+      catch (IllegalArgumentException | IOException e) {
          e.printStackTrace();
       }
       System.out.println("Complete");
    }
 
-   //
-   // args[0] - Full path to the .mal language specification file
-   // args[1] - Path to where the resulting Java code is places (root of the Java package)
-   // args[2] - Target Java package name for the generated code on the form "com.foo.bar"
-   // args[3] - Json folder path
    public static void main(String[] args) throws Exception {
-      String inFolderPath = args[0].substring(0, args[0].lastIndexOf('/'));
-      String inFileName = args[0].substring(args[0].lastIndexOf('/') + 1);
-      Master master = new Master(inFolderPath, inFileName, args[1], args[2], args[3], false, 0.1, 0.1, "");
+      Options options = new Options();
+
+      Option input = new Option("i", "input", true, "input mal file path");
+      input.setRequired(true);
+      options.addOption(input);
+
+      Option output = new Option("o", "output", true, "output folder path for generated code");
+      output.setRequired(true);
+      options.addOption(output);
+
+      Option tests = new Option("t", "tests", true, "output folder path for generated test code");
+      tests.setRequired(false);
+      options.addOption(tests);
+
+      Option packageName = new Option("p", "package", true, "package name of generated code");
+      packageName.setRequired(true);
+      options.addOption(packageName);
+
+      Option visual = new Option("v", "visual", true, "icons for visualization");
+      visual.setRequired(false);
+      options.addOption(visual);
+
+      Option foreseeti = new Option("f", "foreseeti", false, "flag to use foreseeti backend");
+      foreseeti.setRequired(false);
+      options.addOption(foreseeti);
+
+      CommandLineParser parser = new DefaultParser();
+      HelpFormatter formatter = new HelpFormatter();
+      CommandLine cmd = null;
+
+      try {
+         cmd = parser.parse(options, args);
+         new Master(cmd.getOptionValue("input").trim(), cmd.getOptionValue("tests"), cmd.getOptionValue("output").trim(), cmd.getOptionValue("package").trim(), cmd.hasOption("foreseeti"),
+               cmd.getOptionValue("visual"));
+      }
+      catch (ParseException e) {
+         System.err.println(e.getMessage());
+         formatter.printHelp("utility-name", options);
+      }
    }
 }
