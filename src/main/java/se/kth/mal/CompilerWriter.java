@@ -85,6 +85,10 @@ public class CompilerWriter {
 
    public void writeD3(String outputFolder, String outputFileName) {
 
+      // Create the path unless it already exists
+      String path = outputFolder + "/";
+      (new File(path)).mkdirs();
+
       String ofn = outputFileName.substring(0, outputFileName.lastIndexOf('.'));
       String outputFile = outputFolder + "/" + ofn + ".json";
       try {

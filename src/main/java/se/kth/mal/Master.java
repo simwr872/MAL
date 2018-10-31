@@ -18,10 +18,12 @@ public class Master {
    public Master(String malFilePath, String testsOutFolderPath, String javaOutFolderPath, String packageName, boolean useForeseeti, String visualFolderPath) {
       try {
          if (useForeseeti) {
+            System.out.println(">>> Using foreseeti backend <<<");
             SecuriCADCodeGeneratorUsingTemplates generator = new SecuriCADCodeGeneratorUsingTemplates(malFilePath, testsOutFolderPath, javaOutFolderPath, packageName, visualFolderPath);
             generator.generate();
          }
          else {
+            System.out.println(">>> Using MAL Compiler <<<");
             File malFile = new File(malFilePath);
             String inFolderPath = malFile.getParentFile().getAbsolutePath();
             String inFileName = malFile.getName();
