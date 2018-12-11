@@ -6,6 +6,9 @@ import java.util.List;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import se.kth.mal.sLangParser.DescriptionContext;
+import se.kth.mal.sLangParser.RationaleContext;
+
 public class SecuriLangListener extends sLangBaseListener {
 
    String           path;
@@ -27,6 +30,12 @@ public class SecuriLangListener extends sLangBaseListener {
       }
       else {
          currentAsset = model.addAsset(ctx.Identifier(0).getText(), ctx.Identifier(1).getText(), abstractAsset);
+      }
+      if(ctx.description() != null) {
+         currentAsset.setInfo(ctx.description().StringLiteral().getText().replaceAll("\"", ""));
+      }
+      if(ctx.rationale() != null) {
+         currentAsset.setRationale(ctx.rationale().StringLiteral().getText().replaceAll("\"", ""));
       }
       ParserRuleContext parent = ctx.getParent();
       if (parent != null && parent instanceof sLangParser.CategoryDeclarationContext) {
@@ -68,7 +77,10 @@ public class SecuriLangListener extends sLangBaseListener {
       }
 
       if (ctx.description() != null) {
-         attackStep.description = ctx.description().StringLiteral().getText();
+         attackStep.description = ctx.description().StringLiteral().getText().replaceAll("\"", "");
+      }
+      if(ctx.rationale() != null) {
+         attackStep.setRationale(ctx.rationale().StringLiteral().getText().replaceAll("\"", ""));
       }
    }
 

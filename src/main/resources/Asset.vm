@@ -117,6 +117,22 @@ public #if( $asset.isAbstractAsset() ) abstract #end class $asset.getName()   #i
       return "$icon";
    }
 
+   public static String getInfo() {
+      #if( $asset.getInfo() )
+      return "$asset.getInfo()";
+      #else
+      return "";
+      #end
+   }
+
+   public static String getRationale() {
+      #if( $asset.getRationale() )
+      return "$asset.getRationale()";
+      #else
+      return "";
+      #end
+   }
+
    public void registerAssociations() {
       #if( $asset.getSuperAssetName()!="" )
          super.registerAssociations();

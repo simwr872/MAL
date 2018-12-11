@@ -21,6 +21,22 @@ public class $attackStep.getCapitalizedName() extends $attackStepTypeString {
       super(other);
    }
 
+   public static String getInfo() {
+      #if( $attackStep.getDescription() )
+      return "$attackStep.getDescription()";
+      #else
+      return "";
+      #end
+   }
+
+   public static String getRationale() {
+      #if( $attackStep.getRationale() )
+      return "$attackStep.getRationale()";
+      #else
+      return "";
+      #end
+   }
+
    public $attackStep.getCapitalizedName()() {
    }
    #set($parentPointers = $attackStep.getParentPointers())

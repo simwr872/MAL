@@ -6,6 +6,23 @@ public class $attackStep.getCapitalizedName() extends #if( $attackStep.getSuperA
       super(enabled);
       disable = new Disable();
    }
+
+   public static String getInfo() {
+      #if( $attackStep.getDescription() )
+      return "$attackStep.getDescription()";
+      #else
+      return "";
+      #end
+   }
+
+   public static String getRationale() {
+      #if( $attackStep.getRationale() )
+      return "$attackStep.getRationale()";
+      #else
+      return "";
+      #end
+   }
+
    #set($baseAttackStep = $attackStep.getBaseAttackStep())
    #if(!$baseAttackStep)
       #set($baseAttackStep = $attackStep)
