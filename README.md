@@ -29,3 +29,4 @@ mvn clean install
 ## Contributors
 
 * **Sotirios Katsikeas**
+* **Simon Wrede**
