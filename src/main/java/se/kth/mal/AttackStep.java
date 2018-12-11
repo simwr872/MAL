@@ -16,6 +16,7 @@ public class AttackStep {
    String                         attackStepType;
    String                         name;
    String                         description;
+   String                         rationale;
    String                         ttcFunction               = "Default";
    List<Float>                    ttcParameters             = new ArrayList<>();
    public List<AttackStepPointer> childPointers             = new ArrayList<>();
@@ -188,5 +189,13 @@ public class AttackStep {
 
    public CompilerModel getModel() {
       return model;
+   }
+
+   public void setRationale(String rationale) {
+	  this.rationale = rationale;
+   }
+
+   public String getRationale() {
+      return rationale;
    }
 }

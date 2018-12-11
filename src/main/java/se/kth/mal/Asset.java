@@ -10,6 +10,8 @@ import java.util.Set;
 public class Asset {
    CompilerModel    model;
    String           name;
+   String           info;
+   String           rationale;
    String           category                    = "NoCategoryName";
    String           superAssetName              = "";
    Integer          nDefenses                   = 0;
@@ -34,6 +36,22 @@ public class Asset {
          nDefenses++;
       }
       return attackStep;
+   }
+
+   public void setInfo(String info) {
+      this.info = info;
+   }
+
+   public void setRationale(String rationale) {
+      this.rationale = rationale;
+   }
+
+   public String getInfo() {
+      return info;
+   }
+
+   public String getRationale() {
+      return rationale;
    }
 
    public String getName() {
