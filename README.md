@@ -16,6 +16,29 @@ To build the MAL compiler, which can be later used to create domain specific lan
 mvn clean install
 ```
 
+### Using the release version - the .jar file
+
+An easier alternative is to download and use the precompiled version of the MAL compiler, found on the releases of this repository.
+
+To run the MAL compiler together with the DSL of your choice you simply have to issue the following command on the command line:
+
+```
+java -cp mal-compiler-0.0.1.jar se.kth.mal.Master -i <input_path> -o <ouput_path> -p <package_name> -t <tests_path>
+```
+
+More specifically, the usage of the MAL jar is presented below:
+
+```
+usage: 
+ -f,--foreseeti       flag to use foreseeti backend
+ -i,--input <arg>     input mal file path
+ -o,--output <arg>    output folder path for generated code
+ -p,--package <arg>   package name of generated code
+ -t,--tests <arg>     output folder path for generated test code
+ -v,--visual <arg>    icons for visualization
+
+```
+
 ## Built With
 
 * [Maven](https://maven.apache.org/) - Dependency Management
