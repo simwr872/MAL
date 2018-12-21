@@ -813,6 +813,45 @@ public class SecuriCADCodeGenerator {
       writer.println("   }\n");
    }
 
+   void printPointer(String parentStep, AttackStepPointer pointer) {
+      String attackStepName = pointer.getAttackStepName();
+      String iterator = pointer.getAsset().getDecapitalizedName();
+      String assetName = pointer.getAsset().getName();
+      String multiplicity = pointer.getMultiplicity();
+      String roleName = pointer.getRoleName();
+      AttackStepPointer ptr = pointer.getAttackStepPointer();
+
+      if (roleName.equals("this")) {
+         writer.println(String.format("if (%s != null) {", attackStepName));
+         writer.println(String.format("set.add(%s);", attackStepName));
+         writer.println("}");
+      }
+      else {
+         if (multiplicity.equals("0-1") || multiplicity.equals("1")) {
+            writer.println(String.format("if (%s%s(null) != null) {", parentStep, roleName));
+            parentStep += String.format("%s.", roleName);
+            if (ptr != null) {
+               printPointer(parentStep, ptr);
+            }
+            else {
+               writer.println(String.format("set.add(%s%s);", parentStep, attackStepName));
+            }
+            writer.println("}");
+         }
+         else {
+            writer.println(String.format("for (%s %s : %s%s) {", assetName, iterator, parentStep, roleName));
+            parentStep = String.format("%s.", iterator);
+            if (ptr != null) {
+               printPointer(parentStep, ptr);
+            }
+            else {
+               writer.println(String.format("set.add(%s%s);", parentStep, attackStepName));
+            }
+            writer.println("}");
+         }
+      }
+   }
+
    void printUpdateChildren(AttackStep attackStep) {
       if (!attackStep.childPointers.isEmpty()) {
          writer.println("      @Override");
@@ -823,32 +862,8 @@ public class SecuriCADCodeGenerator {
          else {
             writer.println("Set<AttackStep> set = new HashSet<>();");
          }
-         String subClassAndAttackStepName;
-
          for (AttackStepPointer childPointer : attackStep.childPointers) {
-            if (childPointer.getSubClassName().equals("")) {
-               subClassAndAttackStepName = childPointer.getAttackStep().getName();
-            }
-            else {
-               subClassAndAttackStepName = childPointer.getSubClassName() + "." + childPointer.getAttackStep().getName();
-            }
-            if (childPointer.getMultiplicity().equals("0-1") || childPointer.getMultiplicity().equals("1")) {
-               if (childPointer.getRoleName().equals("this")) {
-                  writer.println("         if (" + subClassAndAttackStepName + " != null) {");
-                  writer.println("            set.add(" + subClassAndAttackStepName + ");");
-                  writer.println("         }");
-               }
-               else {
-                  writer.println("         if (" + childPointer.getRoleName() + "(null) != null) {");
-                  writer.println("            set.add(" + childPointer.getRoleName() + "(null)." + subClassAndAttackStepName + ");");
-                  writer.println("         }");
-               }
-            }
-            if (childPointer.getMultiplicity().equals("1-*") || childPointer.getMultiplicity().equals("*")) {
-               writer.println("         for (" + childPointer.getAttackStep().getAsset().getName() + " " + decapitalize(childPointer.getAttackStep().getAsset().getName()) + " : "
-                     + childPointer.getRoleName() + "(null)) {");
-               writer.println("            set.add(" + decapitalize(childPointer.getAttackStep().getAsset().getName()) + "." + subClassAndAttackStepName + ");\n         }");
-            }
+            printPointer("", childPointer);
          }
          writer.println("return set;");
          writer.println("      }\n");

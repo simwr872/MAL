@@ -192,6 +192,25 @@ public class CompilerModel {
       return null;
    }
 
+   private boolean isLeftAsset(Association assoc, String name) {
+      if (assoc.leftAssetName.equals(name)) {
+         return true;
+      }
+      else if (assoc.rightAssetName.equals(name)) {
+         return false;
+      }
+      // Original asset name might be the last child and the association may be
+      // set way up the parent tree. We must iterate upwards until we can't.
+      Asset asset = getAsset(name);
+      if (!asset.getSuperAssetName().equals("")) {
+         System.out.println("Climbing parents, " + asset.getSuperAssetName());
+         return isLeftAsset(assoc, asset.getSuperAssetName());
+      }
+      else {
+         return false;
+      }
+   }
+
    // SecuriLangListener reads strings from the .slang file into Model
    // variables, but because the model is not yet complete, they cannot always
    // be written to the proper place (for instance, children classes may not yet
@@ -212,44 +231,44 @@ public class CompilerModel {
       for (Asset parentAsset : assets) {
          for (AttackStep parentAttackStep : parentAsset.attackSteps) {
             for (AttackStepPointer childPointer : parentAttackStep.childPointers) {
-               AttackStepPointer parentPointer = addStepPointer();
 
-               parentPointer.attackStep = parentAttackStep;
-               parentPointer.attackStepName = parentAttackStep.name;
-
-               if (childPointer.roleName.equals("this")) {
-                  childPointer.multiplicity = Association.ONE;
-                  parentPointer.multiplicity = Association.ONE;
+               System.out.println(String.format("Traversing %s$%s", parentAsset.name, childPointer.attackStepName));
+               AttackStepPointer pointer = childPointer;
+               String assetName = parentAsset.name;
+               if (childPointer.getRoleNames().isEmpty()) {
+                  childPointer.roleName = "this";
+                  pointer.asset = getAsset(assetName);
+                  pointer.multiplicity = "1";
                }
-               else {
-                  childPointer.association = getConnectedAssociation(parentAsset.name, childPointer.roleName);
-                  assertNotNull(String.format("Can't find the association that connects %s to the role %s (%s.%s -> %s.%s) . Perhaps the role name is incorrect?", parentAsset.name,
-                        childPointer.roleName, parentAsset.name, parentAttackStep.name, childPointer.roleName, childPointer.attackStepName, childPointer.association), childPointer.association);
-                  parentPointer.association = childPointer.association;
-                  if (childPointer.association.rightRoleName.equals(childPointer.roleName)) {
-                     childPointer.multiplicity = childPointer.association.rightMultiplicity;
-                     parentPointer.multiplicity = childPointer.association.leftMultiplicity;
-                     parentPointer.roleName = childPointer.association.leftRoleName;
+               for (int i = 0; i < childPointer.getRoleNames().size(); i++) {
+                  pointer.roleName = childPointer.getRoleNames().get(i);
+                  System.out.println(String.format("  Connecting %s -> %s", assetName, pointer.roleName));
+                  pointer.association = getConnectedAssociation(assetName, pointer.roleName);
+                  assertNotNull("null", pointer.association);
+                  System.out.println(String.format("    Association %s found", pointer.association.getName()));
+                  if (isLeftAsset(pointer.association, assetName)) {
+                     System.out.println("      left");
+                     assetName = pointer.association.getRightAssetName();
+                     pointer.multiplicity = pointer.association.rightMultiplicity;
                   }
-                  if (childPointer.association.leftRoleName.equals(childPointer.roleName)) {
-                     childPointer.multiplicity = childPointer.association.leftMultiplicity;
-                     parentPointer.multiplicity = childPointer.association.rightMultiplicity;
-                     parentPointer.roleName = childPointer.association.rightRoleName;
+                  else {
+                     System.out.println("      right");
+                     assetName = pointer.association.getLeftAssetName();
+                     pointer.multiplicity = pointer.association.leftMultiplicity;
+                  }
+                  pointer.asset = getAsset(assetName);
+                  System.out.println(String.format("    Multiplicity: %s", pointer.multiplicity));
+                  if (i != childPointer.getRoleNames().size() - 1) {
+                     AttackStepPointer ptr = addStepPointer();
+                     pointer.attackStepPointer = ptr;
+                     pointer = ptr;
                   }
                }
-
-               assertNotNull(String.format("%s could not find the multiplicity of %s.%s", parentAsset.name, childPointer.roleName, childPointer.attackStepName), childPointer.multiplicity);
-               String childAssetName = getConnectedAssetName(parentAsset.name, childPointer.roleName);
-               assertNotNull(childAssetName);
-               Asset childAsset = getAsset(childAssetName);
-
-               assertNotNull(String.format("Did not find %s. Its attack step %s.%s was supposed to be reached from %s.%s", childAssetName, childPointer.roleName, childPointer.attackStepName,
-                     parentAsset.name, parentAttackStep.name), childAsset);
-               childPointer.attackStep = childAsset.getAttackStep(childPointer.attackStepName);
-
-               assertNotNull(String.format("Did not find the attack step %s in the asset %s, but %s.%s thinks so.", childPointer.attackStepName, childAsset.name, parentPointer.attackStep.asset.name,
-                     parentPointer.attackStepName), childPointer.attackStep);
-               childPointer.attackStep.parentPointers.add(parentPointer);
+               pointer.attackStepName = childPointer.attackStepName;
+               pointer.attackStep = pointer.getAsset().getAttackStep(pointer.attackStepName);
+               if (pointer != childPointer) {
+                  childPointer.attackStepName = "";
+               }
             }
          }
 

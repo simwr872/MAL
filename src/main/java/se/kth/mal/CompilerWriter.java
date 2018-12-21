@@ -120,7 +120,11 @@ public class CompilerWriter {
                   if (attackStep.childPointers.size() > 0 || superAttackStep != null) {
                      writeToJsonStringln("     \"targets\": [");
                      for (AttackStepPointer childPointer : attackStep.childPointers) {
-                        writeToJsonStringln("      {\"name\": \"" + childPointer.attackStep.name + "\", \"entity_name\": \"" + childPointer.attackStep.asset.name + "\", \"size\": 4000},");
+                        AttackStepPointer ptr = childPointer;
+                        while (ptr.getAttackStepPointer() != null) {
+                           ptr = ptr.getAttackStepPointer();
+                        }
+                        writeToJsonStringln(String.format("{\"name\": \"%s\", \"entity_name\": \"%s\", \"size\": 4000},", ptr.getAttackStepName(), ptr.getAsset().getName()));
                      }
                      if (superAttackStep != null) {
                         writeToJsonStringln("      {\"name\": \"" + superAttackStep.name + "\", \"entity_name\": \"" + superAttackStep.asset.name + "\", \"size\": 4000},");
@@ -477,39 +481,52 @@ public class CompilerWriter {
       writer.println("   }\n");
    }
 
+   void printPointer(String parentStep, AttackStepPointer pointer) {
+      String attackStepName = pointer.getAttackStepName();
+      String iterator = pointer.getAsset().getDecapitalizedName();
+      String assetName = pointer.getAsset().getName();
+      String multiplicity = pointer.getMultiplicity();
+      String roleName = pointer.getRoleName();
+      AttackStepPointer ptr = pointer.getAttackStepPointer();
+
+      if (roleName.equals("this")) {
+         writer.println(String.format("if (%s != null) {", attackStepName));
+         writer.println(String.format("%s.updateTtc(this, ttc, activeAttackSteps);", attackStepName));
+         writer.println("}");
+      }
+      else {
+         if (multiplicity.equals("0-1") || multiplicity.equals("1")) {
+            writer.println(String.format("if (%s%s != null) {", parentStep, roleName));
+            parentStep += String.format("%s.", roleName);
+            if (ptr != null) {
+               printPointer(parentStep, ptr);
+            }
+            else {
+               writer.println(String.format("%s%s.updateTtc(this, ttc, activeAttackSteps);", parentStep, attackStepName));
+            }
+            writer.println("}");
+         }
+         else {
+            writer.println(String.format("for (%s %s : %s%s) {", assetName, iterator, parentStep, roleName));
+            parentStep = String.format("%s.", iterator);
+            if (ptr != null) {
+               printPointer(parentStep, ptr);
+            }
+            else {
+               writer.println(String.format("%s%s.updateTtc(this, ttc, activeAttackSteps);", parentStep, attackStepName));
+            }
+            writer.println("}");
+         }
+      }
+   }
+
    void printUpdateChildren(AttackStep attackStep) {
       if (!attackStep.childPointers.isEmpty()) {
          writer.println("      @Override");
          writer.println("      public void updateChildren(Set<AttackStep> activeAttackSteps) {");
          // writer.println(" super.updateChildren(activeAttackSteps);");
-         String subClassAndAttackStepName;
-         String childString = "";
          for (AttackStepPointer childPointer : attackStep.childPointers) {
-            if (childPointer.subClassName.equals("")) {
-               subClassAndAttackStepName = childPointer.attackStep.name;
-            }
-            else {
-               subClassAndAttackStepName = childPointer.subClassName + "." + childPointer.attackStep.name;
-            }
-            if (childPointer.roleName.equals("this")) {
-               childString = subClassAndAttackStepName;
-            }
-            else {
-               childString = childPointer.roleName + "." + subClassAndAttackStepName;
-            }
-            if (childPointer.multiplicity.equals("0-1") || childPointer.multiplicity.equals("1")) {
-               writer.println("         if (" + childPointer.roleName + " != null) {");
-               writer.println("            " + childString + ".updateTtc(this, ttc, activeAttackSteps);");
-               writer.println("         }");
-            }
-            if (childPointer.multiplicity.equals("1-*")) {
-               writer.println("         for (" + childPointer.attackStep.asset.name + " " + decapitalize(childPointer.attackStep.asset.name) + " : " + childPointer.roleName + ") {");
-               writer.println("            " + decapitalize(childPointer.attackStep.asset.name) + "." + subClassAndAttackStepName + ".updateTtc(this, ttc, activeAttackSteps);\n         }");
-            }
-            if (childPointer.multiplicity.equals("*")) {
-               writer.println("         for (" + childPointer.attackStep.asset.name + " " + decapitalize(childPointer.attackStep.asset.name) + " : " + childPointer.roleName + ") {");
-               writer.println("            " + decapitalize(childPointer.attackStep.asset.name) + "." + subClassAndAttackStepName + ".updateTtc(this, ttc, activeAttackSteps);\n         }");
-            }
+            printPointer("", childPointer);
          }
          writer.println("      }\n");
       }
