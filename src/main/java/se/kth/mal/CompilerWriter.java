@@ -482,39 +482,42 @@ public class CompilerWriter {
    }
 
    void printPointer(String pre, AttackStepPointer pointer) {
-      //String attackStepName = pointer.getAttackStepName();
-	  // Only exists on last pointer
-	  	 System.out.println(" RN: "+pointer.roleName);
-	  AttackStep attackStep = pointer.getAttackStep();
-	  
+      // String attackStepName = pointer.getAttackStepName();
+      // Only exists on last pointer
+      System.out.println(" RN: " + pointer.roleName);
+      AttackStep attackStep = pointer.getAttackStep();
+
       String iterator = pointer.getAsset().getDecapitalizedName();
       String assetName = pointer.getAsset().getName();
       String multiplicity = pointer.getMultiplicity();
 
       // Will always exist but last pointer will point to an empty one
       AttackStepPointer ptr = pointer.getAttackStepPointer();
-      
+
       // Null on self reference
       String roleName = pointer.getRoleName();
-      
+
       if (attackStep != null) {
-    	  // Final step
-    	  if (pre.isEmpty()) {
-    		  // Self reference
-    		  writer.println(String.format("if (%s != null) {//selfref", attackStep.getName()));
-    		  writer.println(String.format("%s.updateTtc(this, ttc, activeAttackSteps);", attackStep.getName()));
-    	      writer.println("}");
-    	  } else {
-    		  writer.println(String.format("%s%s.updateTtc(this, ttc, activeAttackSteps);", pre, attackStep.getName()));
-    	  }
-      } else if (multiplicity.equals("0-1") || multiplicity.equals("1")) {
-    	  writer.println(String.format("if (%s%s != null) {", pre, roleName));
-    	  printPointer(String.format("%s%s.", pre, roleName), ptr);
-          writer.println("}");
-      } else {
-    	  writer.println(String.format("for (%s %s : %s%s) {", assetName, iterator, pre, roleName));
-    	  printPointer(String.format("%s.", iterator), ptr);
-          writer.println("}");
+         // Final step
+         if (pre.isEmpty()) {
+            // Self reference
+            writer.println(String.format("if (%s != null) {//selfref", attackStep.getName()));
+            writer.println(String.format("%s.updateTtc(this, ttc, activeAttackSteps);", attackStep.getName()));
+            writer.println("}");
+         }
+         else {
+            writer.println(String.format("%s%s.updateTtc(this, ttc, activeAttackSteps);", pre, attackStep.getName()));
+         }
+      }
+      else if (multiplicity.equals("0-1") || multiplicity.equals("1")) {
+         writer.println(String.format("if (%s%s != null) {", pre, roleName));
+         printPointer(String.format("%s%s.", pre, roleName), ptr);
+         writer.println("}");
+      }
+      else {
+         writer.println(String.format("for (%s %s : %s%s) {", assetName, iterator, pre, roleName));
+         printPointer(String.format("%s.", iterator), ptr);
+         writer.println("}");
       }
    }
 
@@ -523,145 +526,98 @@ public class CompilerWriter {
          writer.println("      @Override");
          writer.println("      public void updateChildren(Set<AttackStep> activeAttackSteps) {");
          // writer.println(" super.updateChildren(activeAttackSteps);");
-         System.out.println("AS: "+attackStep.getName());
+         System.out.println("AS: " + attackStep.getName());
          for (AttackStepPointer childPointer : attackStep.childPointers) {
-        	 printPointer("", childPointer);
+            printPointer("", childPointer);
          }
          writer.println("      }\n");
       }
    }
 
    void printSetExpectedParents(AttackStep attackStep) {
-	   /*if (!attackStep.parentPointers.isEmpty()) {
-		   writer.println("@Override");
-	       writer.println("protected void setExpectedParents() {");
-	       if (!attackStep.superAttackStepName.equals("")) {
-            writer.println("         super.setExpectedParents();");
-	       }
-	       if (attackStep.existenceRequirementRoles.size() > 0) {
-	          writer.println("         if (" + attackStep.existenceRequirementRoles.get(0) + " != null) {");
-	       }
-	       for (AttackStepPointer pointer : attackStep.parentPointers) {
-	    	   if (!pointer.roleName.isEmpty()) {
-	    		   writer.println(String.format("for(%s %s : %s) {", pointer.asset.name, decapitalize(pointer.asset.name), pointer.roleName));
-	    		   writer.println(String.format("addExpectedParent(%s.%s);", decapitalize(pointer.asset.name), pointer.attackStep.name));
-	    		   writer.println("}");
-	    	   } else {
-	    		   writer.println(String.format("addExpectedParent(%s);", pointer.attackStep.name));
-	    	   }
-	       }
-	       writer.println("}");
-	   }*/
-	   
-	   
       if (!attackStep.parentPointers.isEmpty()) {
-         writer.println("      @Override");
-         writer.println("      protected void setExpectedParents() {");
+         writer.println("@Override");
+         writer.println("protected void setExpectedParents() {");
          // When an attack step is overridden, the inheriting parents must still
-         // be
-         // able to reach it as specified in the super class.
-
+         // be able to reach it as specified in the super class.
          if (!attackStep.superAttackStepName.equals("")) {
-            writer.println("         super.setExpectedParents();");
+            writer.println("super.setExpectedParents();");
          }
          if (attackStep.existenceRequirementRoles.size() > 0) {
-            writer.println("         if (" + attackStep.existenceRequirementRoles.get(0) + " != null) {");
+            writer.println(String.format("if (%s != null) {", attackStep.existenceRequirementRoles.get(0)));
          }
 
          for (AttackStepPointer parentPointer : attackStep.parentPointers) {
-            String disableString = "";
+            String roleName = parentPointer.roleName;
+            String attackName = parentPointer.attackStep.asset.name;
+            String assocName = parentPointer.association != null ? parentPointer.association.getAssetName(roleName) : "";
+            String ref = parentPointer.attackStep.name;
             if (parentPointer.attackStep.attackStepType.equals("#") || parentPointer.attackStep.attackStepType.equals("E") || parentPointer.attackStep.attackStepType.equals("3")) {
-               disableString = ".disable";
+               ref += ".disable";
             }
-            String parentRoleName = parentPointer.roleName;
-            String parentAssetNameAccordingToAttackStep = parentPointer.attackStep.asset.name;
-            String parentAssetNameAccordingToAssociation = "";
-            if (parentPointer.association != null) {
-               parentAssetNameAccordingToAssociation = parentPointer.association.getAssetName(parentRoleName);
+            String longRef = ref;
+            if (!parentPointer.attackStep.asset.superAssets().contains(attackStep.asset)) {
+               longRef = String.format("%s.%s", roleName, ref);
             }
-            System.out.println(String.format("%s | %s", parentAssetNameAccordingToAttackStep, parentAssetNameAccordingToAssociation));
-            String parentShortStepName = parentPointer.attackStep.name + disableString;
-            String parentString = "";
-            if (parentPointer.attackStep.asset.superAssets().contains(attackStep.asset)) {
-               parentString = parentShortStepName;
-            }
-            else {
-               parentString = parentRoleName + "." + parentShortStepName;
-            }
-            System.out.println(parentString);
-            String mainExpressionString = "";
+
             if (parentPointer.multiplicity.equals("1")) {
-               if (!parentPointer.attackStep.asset.superAssets().contains(attackStep.asset)) {
-                  mainExpressionString += "         if (" + parentRoleName + " != null) {\n";
-                  mainExpressionString += "            addExpectedParent(" + parentString + ");\n";
-                  mainExpressionString += "         }\n";
-                  mainExpressionString += "         else {\n";
-                  mainExpressionString += "            System.out.println(\"Error in \" + name + \": Exactly one " + parentRoleName + " must be connected to each " + attackStep.asset.name + "\");\n";
-                  mainExpressionString += "         }\n";
-               }
-               else if (!parentRoleName.isEmpty()) {
-                  mainExpressionString += "         if (" + parentRoleName + " != null) {\n";
-                  mainExpressionString += "            addExpectedParent(" + parentRoleName + "." + parentShortStepName + ");\n";
-                  mainExpressionString += "         }\n";
+               if (roleName.isEmpty()) {
+                  // Rolename is empty if child step was self ref
+                  writer.println(String.format("addExpectedParent(%s);", ref));
                }
                else {
-                  mainExpressionString += "         addExpectedParent(" + parentString + ");\n";
+                  writer.println(String.format("if (%s != null) {", roleName));
+                  writer.println(String.format("addExpectedParent(%s);", longRef));
+                  writer.println("} else {");
+                  writer.println(String.format("throw new NullPointerException(\"Exactly one %s must be connected to each %s\");", roleName, attackStep.asset.name));
+                  writer.println("}");
                }
             }
-
-            if (parentPointer.multiplicity.equals("0-1")) {
-               mainExpressionString += "         if (" + parentRoleName + " != null) {\n";
-               if (parentAssetNameAccordingToAssociation.equals(parentAssetNameAccordingToAttackStep)) {
-                  if (!parentRoleName.isEmpty())
-                     mainExpressionString += "            addExpectedParent(" + parentRoleName + "." + parentShortStepName + ");\n";
-                  else
-                     mainExpressionString += "            addExpectedParent(" + parentString + ");\n";
+            else if (parentPointer.multiplicity.equals("0-1")) {
+               writer.println(String.format("if (%s != null) {", roleName));
+               if (attackName.equals(assocName)) {
+                  // Not an inherited class
+                  writer.println(String.format("addExpectedParent(%s.%s);//0-1 long", roleName, ref));
                }
                else {
-                  mainExpressionString += "            if (" + decapitalize(parentRoleName) + " instanceof " + parentAssetNameAccordingToAttackStep + ") {\n";
-                  mainExpressionString += "               addExpectedParent(((" + parentAssetNameAccordingToAttackStep + ")" + decapitalize(parentRoleName) + ")." + parentShortStepName + ");\n";
-                  mainExpressionString += "            }\n";
-
+                  writer.println(String.format("if (%s instanceof %s) {", decapitalize(roleName), attackName));
+                  writer.println(String.format("addExpectedParent(((%s)%s).%s);", attackName, decapitalize(roleName), ref));
+                  writer.println("}");
                }
-               mainExpressionString += "         }\n";
-               // loopString += "else {\n";
-               // loopString += "sample.setConcluded(this, true);\n}\n";
+               writer.println("}");
             }
-            if (parentPointer.multiplicity.equals("*")) {
-               mainExpressionString = loopString(parentAssetNameAccordingToAttackStep, parentAssetNameAccordingToAssociation, parentRoleName, parentShortStepName, mainExpressionString);
-               // loopString += "else {\n";
-               // loopString += "sample.setConcluded(this, true);\n}\n";
+            else if (parentPointer.multiplicity.equals("*")) {
+               loopString(attackName, assocName, roleName, ref);
             }
-            if (parentPointer.multiplicity.equals("1-*")) {
-               mainExpressionString += "         if (" + parentRoleName + " != null) {\n";
-               mainExpressionString = loopString(parentAssetNameAccordingToAttackStep, parentAssetNameAccordingToAssociation, parentRoleName, parentShortStepName, mainExpressionString);
-               mainExpressionString += "         }\n";
-               mainExpressionString += "         else {\n";
-               mainExpressionString += "            throw new NullPointerException(\"At least one " + parentRoleName + " must be connected to each " + attackStep.asset.name + "\");\n";
-               mainExpressionString += "         }\n";
+            else if (parentPointer.multiplicity.equals("1-*")) {
+               writer.println(String.format("if (%s != null) {", roleName));
+               loopString(attackName, assocName, roleName, ref);
+               writer.println("} else {");
+               writer.println(String.format("throw new NullPointerException(\"At least one %s must be connected to each\");", roleName, attackStep.asset.name));
+               writer.println("}");
             }
-            writer.println(mainExpressionString);
          }
          if (attackStep.existenceRequirementRoles.size() > 0) {
-            writer.println("         }");
+            writer.println("}");
          }
-         writer.println("      }\n");
+         writer.println("}");
       }
    }
 
-   protected String loopString(String parentAssetNameAccordingToAttackStep, String parentAssetNameAccordingToAssociation, String parentRoleName, String parentShortStepName,
-         String mainExpressionString) {
-      if (parentAssetNameAccordingToAssociation.equals(parentAssetNameAccordingToAttackStep)) {
-         mainExpressionString += "         for (" + parentAssetNameAccordingToAttackStep + " " + decapitalize(parentAssetNameAccordingToAttackStep) + " : " + parentRoleName + ") {\n";
-         mainExpressionString += "            addExpectedParent(" + decapitalize(parentAssetNameAccordingToAttackStep) + "." + parentShortStepName + ");\n         }\n";
+   protected void loopString(String attackName, String assocName, String roleName, String ref) {
+      if (attackName.equals(assocName)) {
+         // Not inherited
+         writer.println(String.format("for (%s %s : %s) {", attackName, decapitalize(attackName), roleName));
+         writer.println(String.format("addExpectedParent(%s.%s);", decapitalize(attackName), ref));
+         writer.println("}");
       }
       else {
-         mainExpressionString += "         for (" + parentAssetNameAccordingToAssociation + " " + decapitalize(parentAssetNameAccordingToAssociation) + " : " + parentRoleName + ") {\n";
-         mainExpressionString += "            if (" + decapitalize(parentAssetNameAccordingToAssociation) + " instanceof " + parentAssetNameAccordingToAttackStep + ") {\n";
-         mainExpressionString += "            addExpectedParent(((" + parentAssetNameAccordingToAttackStep + ")" + decapitalize(parentAssetNameAccordingToAssociation) + ")." + parentShortStepName
-               + ");\n            }\n         }\n";
+         writer.println(String.format("for (%s %s : %s) {", assocName, decapitalize(assocName), roleName));
+         writer.println(String.format("if (%s instanceof %s) {", decapitalize(assocName), attackName));
+         writer.println(String.format("addExpectedParent(((%s)%s).%s);", attackName, decapitalize(assocName), ref));
+         writer.println("}");
+         writer.println("}");
       }
-      return mainExpressionString;
    }
 
    void printLocalTtc(AttackStep attackStep) {
