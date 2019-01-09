@@ -1,34 +1,28 @@
-#set($attackStepName = "$childPointer.getAttackStepName()")
+#set($attackStepName = "$childPointer.getAttackStep().getName()")
 #set($iterator = "$childPointer.getAsset().getDecapitalizedName()")
 #set($assetName = "$childPointer.getAsset().getName()")
 #set($multiplicity = "$childPointer.getMultiplicity()")
 #set($roleName = "$childPointer.getRoleName()")
 #set($pointer = $childPointer.getAttackStepPointer())
 
-#if ($roleName == "this")
-    if($attackStepName != null) {
-        set.add($attackStepName);
-    }
-#else
-    #if($multiplicity == "0-1" || $multiplicity == "1")
-        if($parentStep$roleName(null) != null) {
-            #set($parentStep = "$parentStep$roleName.")
-            #if ($pointer)
-                #set($childPointer = $pointer)
-                #parse("attacksteppointer.vm")
-            #else
-                set.add($parentStep$attackStepName);
-            #end
+#if (!$pointer)
+    #if ($parentStep == "")
+        if($attackStepName != null) {
+            set.add($attackStepName);
         }
     #else
-        for($assetName $iterator : $parentStep$roleName) {
-            #set($parentStep = "$iterator.")
-            #if ($pointer)
-                #set($childPointer = $pointer)
-                #parse("attacksteppointer.vm")
-            #else
-                set.add($parentStep$attackStepName);
-            #end
-        }
+        set.add($parentStep$attackStepName);
     #end
+#elseif($multiplicity == "0-1" || $multiplicity == "1")
+    if($parentStep$roleName(null) != null) {
+        #set($parentStep = "$parentStep$roleName.")
+        #set($childPointer = $pointer)
+        #parse("attacksteppointer.vm")
+    }
+#else
+    for($assetName $iterator : $parentStep$roleName) {
+        #set($parentStep = "$iterator.")
+        #set($childPointer = $pointer)
+        #parse("attacksteppointer.vm")
+    }
 #end

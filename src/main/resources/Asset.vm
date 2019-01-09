@@ -113,11 +113,11 @@ public #if( $asset.isAbstractAsset() ) abstract #end class $asset.getName()   #i
       #end
    }
 
-   public static String getIcon() {
+   public String getIcon() {
       return "$icon";
    }
 
-   public static String getInfo() {
+   public String getInfo() {
       #if( $asset.getInfo() )
       return "$asset.getInfo()";
       #else
@@ -125,7 +125,7 @@ public #if( $asset.isAbstractAsset() ) abstract #end class $asset.getName()   #i
       #end
    }
 
-   public static String getRationale() {
+   public String getRationale() {
       #if( $asset.getRationale() )
       return "$asset.getRationale()";
       #else

@@ -23,7 +23,7 @@ public class Attacker extends AbstractAttacker {
     fillElementMap();
   }
 
-  public static String getIcon() {
+  public String getIcon() {
     return "$icon";
   }
 
