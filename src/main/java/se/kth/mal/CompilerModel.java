@@ -227,7 +227,74 @@ public class CompilerModel {
             sAsset.hasSpecializations = true;
          }
       }
+      
+      
+      for (Asset asset : assets) {
+    	  for(AttackStep attackStep : asset.attackSteps) {
+			  System.out.println(String.format("Iterating children inside %s$%s", asset.name, attackStep.name));
+    		  for(AttackStepPointer attackStepPointer : attackStep.childPointers) {
+    			  System.out.println(String.format("  Found step %s", String.join(".", attackStepPointer.roleNames)));
+    			  
+    			  // Each accessed attackstep will be a series of attacksteppointers.
+    			  
+    			  // Self referencing step will have no .attackStepPointer
+    			  
+    			  // Last step will have .attackStep
+    			  
+    			  // .asset is the asset type of the target
+    			  
+    			  AttackStepPointer pointer = attackStepPointer;
+    			  String assetName = asset.name;
+    			  int roleSize = attackStepPointer.getRoleNames().size();
+    			  // Iterate only just until attackstepname
+    			  for (int i = 0; i < roleSize - 1; i++) {
+    				  pointer.roleName = attackStepPointer.getRoleNames().get(i);
+    				  pointer.association = getConnectedAssociation(assetName, pointer.roleName);
+                      assertNotNull("null", pointer.association);
+                      System.out.println(String.format("    Association %s found", pointer.association.getName()));
+                      if (isLeftAsset(pointer.association, assetName)) {
+                         System.out.println("      left");
+                         assetName = pointer.association.getRightAssetName();
+                         pointer.multiplicity = pointer.association.rightMultiplicity;
+                      }
+                      else {
+                         System.out.println("      right");
+                         assetName = pointer.association.getLeftAssetName();
+                         pointer.multiplicity = pointer.association.leftMultiplicity;
+                      }
+    				  pointer.asset = getAsset(assetName);
+                      System.out.println(String.format("    Multiplicity: %s", pointer.multiplicity));
+                      
+                      AttackStepPointer ptr = addStepPointer();
+                      pointer.attackStepPointer = ptr;
+                      pointer = ptr;
+    			  }
+    			  String attackStepName = attackStepPointer.getRoleNames().get(roleSize - 1);
+    			  // Asset is describing the connecting pointers asset, but this is here
+    			  // for d3.js to render properly
+    			  pointer.asset = getAsset(assetName);
+    			  pointer.attackStep = pointer.asset.getAttackStep(attackStepName);
 
+    			  AttackStepPointer parent = addStepPointer();
+    			  parent.attackStep = attackStep;
+    			  parent.asset = asset;
+    			  if(attackStepPointer.association != null) {
+    				  parent.association = attackStepPointer.association;
+	    			  if(isLeftAsset(attackStepPointer.association, attackStepPointer.asset.name)) {
+	    				  parent.roleName = attackStepPointer.association.getRightRoleName();
+	    				  parent.multiplicity = attackStepPointer.association.rightMultiplicity;
+	    			  } else {
+	    				  parent.roleName = attackStepPointer.association.getLeftRoleName();
+	    				  parent.multiplicity = attackStepPointer.association.leftMultiplicity;
+	    			  }
+    			  } else {
+    				  parent.multiplicity = "1";
+    			  }
+    			  pointer.attackStep.parentPointers.add(parent);
+    		  }
+    	  }
+      }
+      /*
       for (Asset parentAsset : assets) {
          for (AttackStep parentAttackStep : parentAsset.attackSteps) {
             for (AttackStepPointer childPointer : parentAttackStep.childPointers) {
@@ -266,9 +333,10 @@ public class CompilerModel {
                }
                pointer.attackStepName = childPointer.attackStepName;
                pointer.attackStep = pointer.getAsset().getAttackStep(pointer.attackStepName);
-               if (pointer != childPointer) {
-                  childPointer.attackStepName = "";
-               }
+               pointer.attackStep.parentPointers.add(childPointer);
+               //if (pointer != childPointer) {
+               //   childPointer.attackStepName = "";
+               //}
             }
          }
 
@@ -295,7 +363,7 @@ public class CompilerModel {
                }
             }
          }
-      }
+      }*/
 
    }
 
