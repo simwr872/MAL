@@ -496,13 +496,21 @@ public class CompilerWriter {
       }
       else if (pointer.getMultiplicity().equals("0-1") || pointer.getMultiplicity().equals("1")) {
          writer.println(String.format("if (%s%s != null) {", prefix, pointer.getRoleName()));
+         if (!pointer.getType().isEmpty()) {
+            writer.println(String.format("if (%s%s instanceof %s) {", prefix, pointer.getRoleName(), pointer.getType()));
+         }
          printPointer(String.format("%s%s.", prefix, pointer.getRoleName()), pointer.getAttackStepPointer());
          writer.println("}");
+         writer.println(pointer.getType().isEmpty() ? "" : "}");
       }
       else {
          writer.println(String.format("for (%s %s : %s%s) {", pointer.getAsset().getName(), pointer.getAsset().getDecapitalizedName(), prefix, pointer.getRoleName()));
+         if (!pointer.getType().isEmpty()) {
+            writer.println(String.format("if (%s instanceof %s) {", pointer.getAsset().getDecapitalizedName(), pointer.getType()));
+         }
          printPointer(String.format("%s.", pointer.getAsset().getDecapitalizedName()), pointer.getAttackStepPointer());
          writer.println("}");
+         writer.println(pointer.getType().isEmpty() ? "" : "}");
       }
    }
 
@@ -534,15 +542,29 @@ public class CompilerWriter {
             writer.println("}");
          }
       }
+      else if (pointer.getRoleName().isEmpty()) {
+         // Special prepended parent with only type and pointer
+         writer.println(String.format("if (%s.this instanceof %s) {", pointer.getAsset().getName(), pointer.getType()));
+         printParentPointer(prefix, pointer.getAttackStepPointer());
+         writer.println("}");
+      }
       else if (pointer.getMultiplicity().equals("0-1") || pointer.getMultiplicity().equals("1")) {
          writer.println(String.format("if (%s%s != null) {", prefix, pointer.getRoleName()));
+         if (!pointer.getType().isEmpty()) {
+            writer.println(String.format("if (%s%s instanceof %s) {//typeof", prefix, pointer.getRoleName(), pointer.getType()));
+         }
          printParentPointer(String.format("%s%s.", prefix, pointer.getRoleName()), pointer.getAttackStepPointer());
          writer.println("}");
+         writer.println(pointer.getType().isEmpty() ? "" : "}");
       }
       else {
          writer.println(String.format("for (%s %s : %s%s) {", pointer.getAsset().getName(), pointer.getAsset().getDecapitalizedName(), prefix, pointer.getRoleName()));
+         if (!pointer.getType().isEmpty()) {
+            writer.println(String.format("if (%s instanceof %s) {//typeof", pointer.getAsset().getDecapitalizedName(), pointer.getType()));
+         }
          printParentPointer(String.format("%s.", pointer.getAsset().getDecapitalizedName()), pointer.getAttackStepPointer());
          writer.println("}");
+         writer.println(pointer.getType().isEmpty() ? "" : "}");
       }
    }
 

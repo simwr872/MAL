@@ -237,6 +237,7 @@ public class CompilerModel {
                AttackStepPointer pointer = attackStepPointer;
                AttackStepPointer parent = addStepPointer();
                parent.attackStep = attackStep;
+               String type = "";
                while (pointer.attackStepPointer != null) {
                   AttackStepPointer newParent = addStepPointer();
                   newParent.attackStepPointer = parent;
@@ -244,6 +245,8 @@ public class CompilerModel {
 
                   pointer.association = getConnectedAssociation(assetName, pointer.roleName);
                   parent.association = pointer.association;
+                  parent.type = type;
+                  type = pointer.type;
                   assertNotNull("null", pointer.association);
                   System.out.println(String.format("    Association %s found", pointer.association.getName()));
 
@@ -268,6 +271,15 @@ public class CompilerModel {
                   System.out.println(String.format("    Multiplicity: %s", pointer.multiplicity));
 
                   pointer = pointer.attackStepPointer;
+               }
+               if (!type.isEmpty()) {
+                  // Step just before last step has type. We prepend empty
+                  // parent.
+                  AttackStepPointer newParent = addStepPointer();
+                  newParent.attackStepPointer = parent;
+                  parent = newParent;
+                  parent.asset = attackStepPointer.asset;
+                  parent.type = type;
                }
                // Iteration through pointers are complete and we should now be
                // on the pointer with the attackStep rolename

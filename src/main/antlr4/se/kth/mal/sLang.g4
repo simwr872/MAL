@@ -155,11 +155,17 @@ expressionName
 
 ambiguousName
 	:	Identifier
-	|	ambiguousName '.' Identifier
-	;
+    |   Identifier '[' type ']'
+    |   ambiguousName '.' Identifier
+    |   ambiguousName '.' Identifier '[' type ']'
+    ;
+
+type
+    :   Identifier
+    ;
 
 Identifier
-	:	JavaLetter JavaLetterOrDigit*
+    :   JavaLetter JavaLetterOrDigit*
 	;
 
 formalParameters

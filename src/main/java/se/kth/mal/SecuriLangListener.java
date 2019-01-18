@@ -134,6 +134,9 @@ public class SecuriLangListener extends sLangBaseListener {
             ptr.attackStepPointer = pointer;
             pointer = ptr;
             pointer.roleName = anc.Identifier().getText();
+            if (anc.type() != null) {
+               pointer.type = anc.type().Identifier().getText();
+            }
             anc = anc.ambiguousName();
          }
 

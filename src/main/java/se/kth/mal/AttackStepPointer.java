@@ -5,6 +5,7 @@ public class AttackStepPointer {
    AttackStep        attackStep;
    Association       association;
    String            multiplicity;
+   String            type     = "";
    Asset             asset;
    AttackStepPointer attackStepPointer;
 
@@ -30,5 +31,9 @@ public class AttackStepPointer {
 
    public Association getAssociation() {
       return association;
+   }
+
+   public String getType() {
+      return type;
    }
 }
