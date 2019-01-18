@@ -1,16 +1,11 @@
 package se.kth.mal;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class AttackStepPointer {
-   String            roleName       = "";
-   String            attackStepName = "";
+   String            roleName = "";
    AttackStep        attackStep;
    Association       association;
    String            multiplicity;
    Asset             asset;
-   List<String>      roleNames      = new ArrayList<>();
    AttackStepPointer attackStepPointer;
 
    public Asset getAsset() {
@@ -21,16 +16,8 @@ public class AttackStepPointer {
       return attackStepPointer;
    }
 
-   public List<String> getRoleNames() {
-      return roleNames;
-   }
-
    public String getRoleName() {
       return roleName;
-   }
-
-   public String getAttackStepName() {
-      return attackStepName;
    }
 
    public String getMultiplicity() {

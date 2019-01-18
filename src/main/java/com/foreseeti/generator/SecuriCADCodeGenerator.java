@@ -375,7 +375,7 @@ public class SecuriCADCodeGenerator {
       writer.println("  }");
 
       writer.println("  @Override");
-      writer.println("  protected void registerAssociations() {");
+      writer.println("  public void registerAssociations() {");
       writer.println("    AssociationManager.addSupportedAssociationMultiple(this.getClass(),getName(1),AttackStep.class,0,AssociationManager.NO_LIMIT,BaseLangLink.Attacker_AttackStep);");
 
       writer.println("  }");
@@ -813,49 +813,35 @@ public class SecuriCADCodeGenerator {
       writer.println("   }\n");
    }
 
-   void printPointer(String parentStep, AttackStepPointer pointer) {
-      String attackStepName = pointer.getAttackStepName();
-      String iterator = pointer.getAsset().getDecapitalizedName();
-      String assetName = pointer.getAsset().getName();
-      String multiplicity = pointer.getMultiplicity();
-      String roleName = pointer.getRoleName();
-      AttackStepPointer ptr = pointer.getAttackStepPointer();
-
-      if (roleName.equals("this")) {
-         writer.println(String.format("if (%s != null) {", attackStepName));
-         writer.println(String.format("set.add(%s);", attackStepName));
-         writer.println("}");
-      }
-      else {
-         if (multiplicity.equals("0-1") || multiplicity.equals("1")) {
-            writer.println(String.format("if (%s%s(null) != null) {", parentStep, roleName));
-            parentStep += String.format("%s.", roleName);
-            if (ptr != null) {
-               printPointer(parentStep, ptr);
-            }
-            else {
-               writer.println(String.format("set.add(%s%s);", parentStep, attackStepName));
-            }
+   void printPointer(String prefix, AttackStepPointer pointer) {
+      if (pointer.getAttackStep() != null) {
+         // We are at the final step
+         if (prefix.isEmpty()) {
+            // We are also at the first step, self referencing
+            writer.println(String.format("if (%s != null) {//selfref", pointer.getAttackStep().getName()));
+            writer.println(String.format("set.add(%s);", pointer.getAttackStep().getName()));
             writer.println("}");
          }
          else {
-            writer.println(String.format("for (%s %s : %s%s) {", assetName, iterator, parentStep, roleName));
-            parentStep = String.format("%s.", iterator);
-            if (ptr != null) {
-               printPointer(parentStep, ptr);
-            }
-            else {
-               writer.println(String.format("set.add(%s%s);", parentStep, attackStepName));
-            }
-            writer.println("}");
+            writer.println(String.format("set.add(%s%s);", prefix, pointer.getAttackStep().getName()));
          }
+      }
+      else if (pointer.getMultiplicity().equals("0-1") || pointer.getMultiplicity().equals("1")) {
+         writer.println(String.format("if (%s%s(null) != null) {", prefix, pointer.getRoleName()));
+         printPointer(String.format("%s%s(null).", prefix, pointer.getRoleName()), pointer.getAttackStepPointer());
+         writer.println("}");
+      }
+      else {
+         writer.println(String.format("for (%s %s : %s%s(null)) {", pointer.getAsset().getName(), pointer.getAsset().getDecapitalizedName(), prefix, pointer.getRoleName()));
+         printPointer(String.format("%s.", pointer.getAsset().getDecapitalizedName()), pointer.getAttackStepPointer());
+         writer.println("}");
       }
    }
 
    void printUpdateChildren(AttackStep attackStep) {
       if (!attackStep.childPointers.isEmpty()) {
-         writer.println("      @Override");
-         writer.println("      public Set<AttackStep> getAttackStepChildren()  {");
+         writer.println("@Override");
+         writer.println("public Set<AttackStep> getAttackStepChildren()  {");
          if (!attackStep.isSpecialization()) {
             writer.println("Set<AttackStep> set = new HashSet<>(super.getAttackStepChildren());");
          }
@@ -866,7 +852,36 @@ public class SecuriCADCodeGenerator {
             printPointer("", childPointer);
          }
          writer.println("return set;");
-         writer.println("      }\n");
+         writer.println("}");
+      }
+   }
+
+   void printParentPointer(String prefix, AttackStepPointer pointer) {
+      if (pointer.getAttackStep() != null) {
+         // We are at the final step
+         String suffix = pointer.getAttackStep().isDefense() ? ".disable" : "";
+         if (prefix.isEmpty()) {
+            // We are also at the first step, self referencing
+            writer.println(String.format("if (%s != null) {//selfref", pointer.getAttackStep().getName()));
+            writer.println(String.format("sample.addExpectedParent(this, %s%s);", pointer.getAttackStep().getName(), suffix));
+            writer.println("}");
+         }
+         else {
+            prefix = prefix.substring(0, prefix.length() - 1);
+            writer.println(String.format("if (%s instanceof %s) {", prefix, pointer.getAttackStep().getAsset().getName()));
+            writer.println(String.format("sample.addExpectedParent(this, ((%s)%s).%s%s);", pointer.getAttackStep().getAsset().getName(), prefix, pointer.getAttackStep().getName(), suffix));
+            writer.println("}");
+         }
+      }
+      else if (pointer.getMultiplicity().equals("0-1") || pointer.getMultiplicity().equals("1")) {
+         writer.println(String.format("if (%s%s(sample) != null) {", prefix, pointer.getRoleName()));
+         printParentPointer(String.format("%s%s(sample).", prefix, pointer.getRoleName()), pointer.getAttackStepPointer());
+         writer.println("}");
+      }
+      else {
+         writer.println(String.format("for (%s %s : %s%s(null)) {", pointer.getAsset().getName(), pointer.getAsset().getDecapitalizedName(), prefix, pointer.getRoleName()));
+         printParentPointer(String.format("%s.", pointer.getAsset().getDecapitalizedName()), pointer.getAttackStepPointer());
+         writer.println("}");
       }
    }
 
@@ -876,83 +891,15 @@ public class SecuriCADCodeGenerator {
          writer.println("protected void setExpectedParents(ConcreteSample sample) {");
          // When an attack step is overridden, the inheriting parents must still
          // be able to reach it as specified in the super class.
-         if (!attackStep.getSuperAttackStepName().equals("")) {
+         if (!attackStep.getSuperAttackStepName().isEmpty()) {
             writer.println("super.setExpectedParents(sample);");
          }
          if (attackStep.getExistenceRequirementRoles().size() > 0) {
             writer.println(String.format("if (%s != null) {", attackStep.getExistenceRequirementRoles().get(0)));
          }
-
          for (AttackStepPointer parentPointer : attackStep.getParentPointers()) {
-            String roleName = parentPointer.getRoleName();
-            String attackName = parentPointer.getAttackStep().getAsset().getName();
-            String assocName = parentPointer.getAssociation() != null ? parentPointer.getAssociation().getAssetName(roleName) : "";
-            String ref = parentPointer.getAttackStep().getName();
-            if (parentPointer.getAttackStep().getAttackStepType().equals("#") || parentPointer.getAttackStep().getAttackStepType().equals("E")
-                  || parentPointer.getAttackStep().getAttackStepType().equals("3")) {
-               ref += ".disable";
-            }
-            String longRef = ref;
-            if (!parentPointer.getAttackStep().getAsset().superAssets().contains(attackStep.getAsset())) {
-               longRef = String.format("%s.%s", roleName, ref);
-            }
-
-            if (parentPointer.getMultiplicity().equals("1")) {
-               if (roleName.isEmpty()) {
-                  // Rolename is empty if child step was self ref
-                  writer.println(String.format("sample.addExpectedParent(this, %s);", ref));
-               }
-               else {
-                  writer.println(String.format("if (%s(sample) != null) {", roleName));
-                  writer.println(String.format("sample.addExpectedParent(this, %s(sample).%s);", roleName, ref));
-                  writer.println("} else {");
-                  writer.println(String.format("throw new NullPointerException(\"Exactly one %s must be connected to each %s\");", roleName, attackStep.getAsset().getName()));
-                  writer.println("}");
-               }
-            }
-            else if (parentPointer.getMultiplicity().equals("0-1")) {
-               writer.println(String.format("if (%s(sample) != null) {", roleName));
-               if (attackName.equals(assocName)) {
-                  // Not an inherited class
-                  writer.println(String.format("sample.addExpectedParent(this, %s(sample).%s);", roleName, ref));
-               }
-               else {
-                  writer.println(String.format("if (%s(sample) instanceof %s) {", decapitalize(roleName), attackName));
-                  writer.println(String.format("sample.addExpectedParent(this, ((%s)%s(sample)).%s);", attackName, decapitalize(roleName), ref));
-                  writer.println("}");
-               }
-               writer.println("}");
-            }
-            else if (parentPointer.getMultiplicity().equals("*")) {
-               loopString(attackName, assocName, roleName, ref);
-            }
-            else if (parentPointer.getMultiplicity().equals("1-*")) {
-               writer.println(String.format("if (%s != null) {", roleName));
-               loopString(attackName, assocName, roleName, ref);
-               writer.println("} else {");
-               writer.println(String.format("throw new NullPointerException(\"At least one %s must be connected to each\");", roleName, attackStep.getAsset().getName()));
-               writer.println("}");
-            }
+            printParentPointer("", parentPointer);
          }
-         if (attackStep.getExistenceRequirementRoles().size() > 0) {
-            writer.println("}");
-         }
-         writer.println("}");
-      }
-   }
-
-   protected void loopString(String attackName, String assocName, String roleName, String ref) {
-      if (attackName.equals(assocName)) {
-         // Not inherited
-         writer.println(String.format("for (%s %s : %s(sample)) {", attackName, decapitalize(attackName), roleName));
-         writer.println(String.format("sample.addExpectedParent(this, %s.%s);", decapitalize(attackName), ref));
-         writer.println("}");
-      }
-      else {
-         writer.println(String.format("for (%s %s : %s(sample)) {", assocName, decapitalize(assocName), roleName));
-         writer.println(String.format("if (%s instanceof %s) {", decapitalize(assocName), attackName));
-         writer.println(String.format("sample.addExpectedParent(this, ((%s)%s).%s);", attackName, decapitalize(assocName), ref));
-         writer.println("}");
          writer.println("}");
       }
    }

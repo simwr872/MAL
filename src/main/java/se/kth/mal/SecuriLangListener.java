@@ -124,15 +124,20 @@ public class SecuriLangListener extends sLangBaseListener {
    protected List<AttackStepPointer> getChildPointers(sLangParser.ChildrenContext ctx) {
       List<AttackStepPointer> childPointers = new ArrayList<>();
       for (sLangParser.ExpressionNameContext enc : ctx.expressionName()) {
-         AttackStepPointer childPointer = currentAsset.addStepPointer();
+         AttackStepPointer pointer = currentAsset.addStepPointer();
+         pointer.roleName = enc.Identifier().getText();
 
-         childPointer.roleNames.add(0, enc.Identifier().getText());
+         // Traversing backwards
          AmbiguousNameContext anc = enc.ambiguousName();
          while (anc != null) {
-            childPointer.roleNames.add(0, anc.Identifier().getText());
+            AttackStepPointer ptr = currentAsset.addStepPointer();
+            ptr.attackStepPointer = pointer;
+            pointer = ptr;
+            pointer.roleName = anc.Identifier().getText();
             anc = anc.ambiguousName();
          }
-         childPointers.add(childPointer);
+
+         childPointers.add(pointer);
       }
       return childPointers;
    }

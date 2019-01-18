@@ -232,66 +232,48 @@ public class CompilerModel {
          for (AttackStep attackStep : asset.attackSteps) {
             System.out.println(String.format("Iterating children inside %s$%s", asset.name, attackStep.name));
             for (AttackStepPointer attackStepPointer : attackStep.childPointers) {
-               System.out.println(String.format("  Found step %s", String.join(".", attackStepPointer.roleNames)));
 
-               // Each accessed attackstep will be a series of
-               // attacksteppointers.
-
-               // Self referencing step will have no .attackStepPointer
-
-               // Last step will have .attackStep
-
-               // .asset is the asset type of the target
-
-               AttackStepPointer pointer = attackStepPointer;
                String assetName = asset.name;
-               int roleSize = attackStepPointer.getRoleNames().size();
-               // Iterate only just until attackstepname
-               for (int i = 0; i < roleSize - 1; i++) {
-                  pointer.roleName = attackStepPointer.getRoleNames().get(i);
+               AttackStepPointer pointer = attackStepPointer;
+               AttackStepPointer parent = addStepPointer();
+               parent.attackStep = attackStep;
+               while (pointer.attackStepPointer != null) {
+                  AttackStepPointer newParent = addStepPointer();
+                  newParent.attackStepPointer = parent;
+                  parent = newParent;
+
                   pointer.association = getConnectedAssociation(assetName, pointer.roleName);
+                  parent.association = pointer.association;
                   assertNotNull("null", pointer.association);
                   System.out.println(String.format("    Association %s found", pointer.association.getName()));
+
                   if (isLeftAsset(pointer.association, assetName)) {
-                     System.out.println("      left");
+                     // Previous asset is on the left side of assoc
                      assetName = pointer.association.getRightAssetName();
                      pointer.multiplicity = pointer.association.rightMultiplicity;
+
+                     parent.multiplicity = pointer.association.leftMultiplicity;
+                     parent.asset = getAsset(pointer.association.getLeftAssetName());
+                     parent.roleName = pointer.association.getLeftRoleName();
                   }
                   else {
-                     System.out.println("      right");
                      assetName = pointer.association.getLeftAssetName();
                      pointer.multiplicity = pointer.association.leftMultiplicity;
+
+                     parent.multiplicity = pointer.association.rightMultiplicity;
+                     parent.asset = getAsset(pointer.association.getRightAssetName());
+                     parent.roleName = pointer.association.getRightRoleName();
                   }
                   pointer.asset = getAsset(assetName);
                   System.out.println(String.format("    Multiplicity: %s", pointer.multiplicity));
 
-                  AttackStepPointer ptr = addStepPointer();
-                  pointer.attackStepPointer = ptr;
-                  pointer = ptr;
+                  pointer = pointer.attackStepPointer;
                }
-               String attackStepName = attackStepPointer.getRoleNames().get(roleSize - 1);
-               // Asset is describing the connecting pointers asset, but this is
-               // here for d3.js to render properly
+               // Iteration through pointers are complete and we should now be
+               // on the pointer with the attackStep rolename
                pointer.asset = getAsset(assetName);
-               pointer.attackStep = pointer.asset.getAttackStep(attackStepName);
+               pointer.attackStep = pointer.asset.getAttackStep(pointer.roleName);
 
-               AttackStepPointer parent = addStepPointer();
-               parent.attackStep = attackStep;
-               parent.asset = asset;
-               if (attackStepPointer.association != null) {
-                  parent.association = attackStepPointer.association;
-                  if (isLeftAsset(attackStepPointer.association, attackStepPointer.asset.name)) {
-                     parent.roleName = attackStepPointer.association.getRightRoleName();
-                     parent.multiplicity = attackStepPointer.association.rightMultiplicity;
-                  }
-                  else {
-                     parent.roleName = attackStepPointer.association.getLeftRoleName();
-                     parent.multiplicity = attackStepPointer.association.leftMultiplicity;
-                  }
-               }
-               else {
-                  parent.multiplicity = "1";
-               }
                pointer.attackStep.parentPointers.add(parent);
             }
          }
