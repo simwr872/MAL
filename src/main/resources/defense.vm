@@ -7,7 +7,7 @@ public class $attackStep.getCapitalizedName() extends #if( $attackStep.getSuperA
       disable = new Disable();
    }
 
-   public String getInfo() {
+   public static String getInfo() {
       #if( $attackStep.getDescription() )
       return "$attackStep.getDescription()";
       #else
@@ -15,7 +15,7 @@ public class $attackStep.getCapitalizedName() extends #if( $attackStep.getSuperA
       #end
    }
 
-   public String getRationale() {
+   public static String getRationale() {
       #if( $attackStep.getRationale() )
       return "$attackStep.getRationale()";
       #else

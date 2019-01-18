@@ -21,7 +21,7 @@ public class $attackStep.getCapitalizedName() extends $attackStepTypeString {
       super(other);
    }
 
-   public String getInfo() {
+   public static String getInfo() {
       #if( $attackStep.getDescription() )
       return "$attackStep.getDescription()";
       #else
@@ -29,7 +29,7 @@ public class $attackStep.getCapitalizedName() extends $attackStepTypeString {
       #end
    }
 
-   public String getRationale() {
+   public static String getRationale() {
       #if( $attackStep.getRationale() )
       return "$attackStep.getRationale()";
       #else
