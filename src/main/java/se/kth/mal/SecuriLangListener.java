@@ -6,8 +6,7 @@ import java.util.List;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import se.kth.mal.sLangParser.DescriptionContext;
-import se.kth.mal.sLangParser.RationaleContext;
+import se.kth.mal.sLangParser.AmbiguousNameContext;
 
 public class SecuriLangListener extends sLangBaseListener {
 
@@ -31,10 +30,10 @@ public class SecuriLangListener extends sLangBaseListener {
       else {
          currentAsset = model.addAsset(ctx.Identifier(0).getText(), ctx.Identifier(1).getText(), abstractAsset);
       }
-      if(ctx.description() != null) {
+      if (ctx.description() != null) {
          currentAsset.setInfo(ctx.description().StringLiteral().getText().replaceAll("\"", ""));
       }
-      if(ctx.rationale() != null) {
+      if (ctx.rationale() != null) {
          currentAsset.setRationale(ctx.rationale().StringLiteral().getText().replaceAll("\"", ""));
       }
       ParserRuleContext parent = ctx.getParent();
@@ -79,7 +78,7 @@ public class SecuriLangListener extends sLangBaseListener {
       if (ctx.description() != null) {
          attackStep.description = ctx.description().StringLiteral().getText().replaceAll("\"", "");
       }
-      if(ctx.rationale() != null) {
+      if (ctx.rationale() != null) {
          attackStep.setRationale(ctx.rationale().StringLiteral().getText().replaceAll("\"", ""));
       }
    }
@@ -125,21 +124,20 @@ public class SecuriLangListener extends sLangBaseListener {
    protected List<AttackStepPointer> getChildPointers(sLangParser.ChildrenContext ctx) {
       List<AttackStepPointer> childPointers = new ArrayList<>();
       for (sLangParser.ExpressionNameContext enc : ctx.expressionName()) {
-         AttackStepPointer childPointer = currentAsset.addStepPointer();
-         childPointer.attackStepName = enc.Identifier().getText();
-         if ((enc.ambiguousName() == null)) {
-            childPointer.roleName = "this";
+         AttackStepPointer pointer = currentAsset.addStepPointer();
+         pointer.roleName = enc.Identifier().getText();
+
+         // Traversing backwards
+         AmbiguousNameContext anc = enc.ambiguousName();
+         while (anc != null) {
+            AttackStepPointer ptr = currentAsset.addStepPointer();
+            ptr.attackStepPointer = pointer;
+            pointer = ptr;
+            pointer.roleName = anc.Identifier().getText();
+            anc = anc.ambiguousName();
          }
-         else {
-            if (enc.ambiguousName().ambiguousName() == null) {
-               childPointer.roleName = enc.ambiguousName().Identifier().getText();
-            }
-            else {
-               childPointer.subClassName = enc.ambiguousName().Identifier().getText();
-               childPointer.roleName = enc.ambiguousName().ambiguousName().Identifier().getText();
-            }
-         }
-         childPointers.add(childPointer);
+
+         childPointers.add(pointer);
       }
       return childPointers;
    }

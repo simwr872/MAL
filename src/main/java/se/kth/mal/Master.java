@@ -11,7 +11,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
-import com.foreseeti.generator.SecuriCADCodeGeneratorUsingTemplates;
+import com.foreseeti.generator.SecuriCADCodeGenerator;
 
 public class Master {
 
@@ -19,7 +19,7 @@ public class Master {
       try {
          if (useForeseeti) {
             System.out.println(">>> Using foreseeti backend <<<");
-            SecuriCADCodeGeneratorUsingTemplates generator = new SecuriCADCodeGeneratorUsingTemplates(malFilePath, testsOutFolderPath, javaOutFolderPath, packageName, visualFolderPath);
+            SecuriCADCodeGenerator generator = new SecuriCADCodeGenerator(malFilePath, testsOutFolderPath, javaOutFolderPath, packageName);
             generator.generate();
          }
          else {

@@ -192,6 +192,25 @@ public class CompilerModel {
       return null;
    }
 
+   private boolean isLeftAsset(Association assoc, String name) {
+      if (assoc.leftAssetName.equals(name)) {
+         return true;
+      }
+      else if (assoc.rightAssetName.equals(name)) {
+         return false;
+      }
+      // Original asset name might be the last child and the association may be
+      // set way up the parent tree. We must iterate upwards until we can't.
+      Asset asset = getAsset(name);
+      if (!asset.getSuperAssetName().equals("")) {
+         System.out.println("Climbing parents, " + asset.getSuperAssetName());
+         return isLeftAsset(assoc, asset.getSuperAssetName());
+      }
+      else {
+         return false;
+      }
+   }
+
    // SecuriLangListener reads strings from the .slang file into Model
    // variables, but because the model is not yet complete, they cannot always
    // be written to the proper place (for instance, children classes may not yet
@@ -209,75 +228,56 @@ public class CompilerModel {
          }
       }
 
-      for (Asset parentAsset : assets) {
-         for (AttackStep parentAttackStep : parentAsset.attackSteps) {
-            for (AttackStepPointer childPointer : parentAttackStep.childPointers) {
-               AttackStepPointer parentPointer = addStepPointer();
+      for (Asset asset : assets) {
+         for (AttackStep attackStep : asset.attackSteps) {
+            System.out.println(String.format("Iterating children inside %s$%s", asset.name, attackStep.name));
+            for (AttackStepPointer attackStepPointer : attackStep.childPointers) {
 
-               parentPointer.attackStep = parentAttackStep;
-               parentPointer.attackStepName = parentAttackStep.name;
+               String assetName = asset.name;
+               AttackStepPointer pointer = attackStepPointer;
+               AttackStepPointer parent = addStepPointer();
+               parent.attackStep = attackStep;
+               while (pointer.attackStepPointer != null) {
+                  AttackStepPointer newParent = addStepPointer();
+                  newParent.attackStepPointer = parent;
+                  parent = newParent;
 
-               if (childPointer.roleName.equals("this")) {
-                  childPointer.multiplicity = Association.ONE;
-                  parentPointer.multiplicity = Association.ONE;
-               }
-               else {
-                  childPointer.association = getConnectedAssociation(parentAsset.name, childPointer.roleName);
-                  assertNotNull(String.format("Can't find the association that connects %s to the role %s (%s.%s -> %s.%s) . Perhaps the role name is incorrect?", parentAsset.name,
-                        childPointer.roleName, parentAsset.name, parentAttackStep.name, childPointer.roleName, childPointer.attackStepName, childPointer.association), childPointer.association);
-                  parentPointer.association = childPointer.association;
-                  if (childPointer.association.rightRoleName.equals(childPointer.roleName)) {
-                     childPointer.multiplicity = childPointer.association.rightMultiplicity;
-                     parentPointer.multiplicity = childPointer.association.leftMultiplicity;
-                     parentPointer.roleName = childPointer.association.leftRoleName;
+                  pointer.association = getConnectedAssociation(assetName, pointer.roleName);
+                  parent.association = pointer.association;
+                  assertNotNull("null", pointer.association);
+                  System.out.println(String.format("    Association %s found", pointer.association.getName()));
+
+                  if (isLeftAsset(pointer.association, assetName)) {
+                     // Previous asset is on the left side of assoc
+                     assetName = pointer.association.getRightAssetName();
+                     pointer.multiplicity = pointer.association.rightMultiplicity;
+
+                     parent.multiplicity = pointer.association.leftMultiplicity;
+                     parent.asset = getAsset(pointer.association.getLeftAssetName());
+                     parent.roleName = pointer.association.getLeftRoleName();
                   }
-                  if (childPointer.association.leftRoleName.equals(childPointer.roleName)) {
-                     childPointer.multiplicity = childPointer.association.leftMultiplicity;
-                     parentPointer.multiplicity = childPointer.association.rightMultiplicity;
-                     parentPointer.roleName = childPointer.association.rightRoleName;
+                  else {
+                     assetName = pointer.association.getLeftAssetName();
+                     pointer.multiplicity = pointer.association.leftMultiplicity;
+
+                     parent.multiplicity = pointer.association.rightMultiplicity;
+                     parent.asset = getAsset(pointer.association.getRightAssetName());
+                     parent.roleName = pointer.association.getRightRoleName();
                   }
+                  pointer.asset = getAsset(assetName);
+                  System.out.println(String.format("    Multiplicity: %s", pointer.multiplicity));
+
+                  pointer = pointer.attackStepPointer;
                }
+               // Iteration through pointers are complete and we should now be
+               // on the pointer with the attackStep rolename
+               pointer.asset = getAsset(assetName);
+               pointer.attackStep = pointer.asset.getAttackStep(pointer.roleName);
 
-               assertNotNull(String.format("%s could not find the multiplicity of %s.%s", parentAsset.name, childPointer.roleName, childPointer.attackStepName), childPointer.multiplicity);
-               String childAssetName = getConnectedAssetName(parentAsset.name, childPointer.roleName);
-               assertNotNull(childAssetName);
-               Asset childAsset = getAsset(childAssetName);
-
-               assertNotNull(String.format("Did not find %s. Its attack step %s.%s was supposed to be reached from %s.%s", childAssetName, childPointer.roleName, childPointer.attackStepName,
-                     parentAsset.name, parentAttackStep.name), childAsset);
-               childPointer.attackStep = childAsset.getAttackStep(childPointer.attackStepName);
-
-               assertNotNull(String.format("Did not find the attack step %s in the asset %s, but %s.%s thinks so.", childPointer.attackStepName, childAsset.name, parentPointer.attackStep.asset.name,
-                     parentPointer.attackStepName), childPointer.attackStep);
-               childPointer.attackStep.parentPointers.add(parentPointer);
-            }
-         }
-
-         System.out.println("looking into mandatory and nonmandatory for " + parentAsset.name);
-         Asset childAsset;
-         for (Association association : getAssociations(parentAsset)) {
-            childAsset = getAsset(association.getTargetAssetName(parentAsset));
-            assertNotNull(String.format("The association %s [%s]<--%s--> [%s] %s from %s can't find its counterpart.", association.leftAssetName, association.leftRoleName, association.name,
-                  association.rightRoleName, association.rightAssetName, parentAsset.name), childAsset);
-            if (parentAsset.name.equals("MyNetwork")) {
-               System.out.println("Child Asset = " + childAsset.name);
-            }
-
-            if (!parentAsset.nonMandatoryChildren.contains(childAsset)) {
-               if (parentAsset.name.equals("MyNetwork")) {
-                  System.out.println("target relation = " + association.getTargetRelation(parentAsset));
-               }
-               if (association.getTargetRelation(parentAsset).equals("-)")) {
-                  System.out.println("found nonmandatory");
-                  parentAsset.nonMandatoryChildren.add(childAsset);
-               }
-               if (association.getTargetRelation(parentAsset).equals("->")) {
-                  parentAsset.mandatoryChildren.add(childAsset);
-               }
+               pointer.attackStep.parentPointers.add(parent);
             }
          }
       }
-
    }
 
    class Distribution {
