@@ -80,7 +80,7 @@ existenceRequirements
 
 // List the children.
 children 
-	:	childOperator expressionName (',' expressionName)*
+	:	childOperator expression (',' expression)*
 	;
 
 // -> indicates that the generalization attack step definition is replaced by the specialization, while +> denotes the specialization is appended
@@ -147,21 +147,17 @@ attackStepType
 	|	'#'
 	|	't'
 	;
-	
-expressionName
-	:	Identifier
-	|	ambiguousName '.' Identifier
-	;
 
-ambiguousName
-	:	Identifier
-    |   Identifier '[' type ']'
-    |   ambiguousName '.' Identifier
-    |   ambiguousName '.' Identifier '[' type ']'
+expression
+    : expression '.' expression #dot
+    | '(' expression '&' expression ')' #and
+    | '(' expression '|' expression ')' #or
+    | Identifier '[' expressionType ']' #type
+    | Identifier #normal
     ;
 
-type
-    :   Identifier
+expressionType
+    : Identifier
     ;
 
 Identifier

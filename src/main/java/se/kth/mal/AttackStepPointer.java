@@ -1,6 +1,7 @@
 package se.kth.mal;
 
 public class AttackStepPointer {
+   // TODO: remove?
    String            roleName = "";
    AttackStep        attackStep;
    Association       association;

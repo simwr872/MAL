@@ -21,6 +21,12 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
+import se.kth.mal.steps.FinalStep;
+import se.kth.mal.steps.NormalStep;
+import se.kth.mal.steps.SelectStep;
+import se.kth.mal.steps.Step;
+import se.kth.mal.steps.TypeStep;
+
 public class CompilerModel {
 
    private List<Asset>              assets       = new ArrayList<>();
@@ -218,6 +224,30 @@ public class CompilerModel {
    // Model.update() makes a second pass through the model to place all
    // information in the right place.
 
+   // TODO: Rewrite the traversal of pointers with respect to new format
+
+   public void printStep(Step step) {
+      if (step instanceof FinalStep) {
+         System.out.println(((FinalStep) step).name);
+      }
+      else if (step instanceof NormalStep) {
+         System.out.print(((NormalStep) step).name + ".");
+         printStep(step.next);
+      }
+      else if (step instanceof SelectStep) {
+         System.out.print("(");
+         printStep(((SelectStep) step).left);
+         System.out.print(" " + ((SelectStep) step).type + " ");
+         printStep(((SelectStep) step).right);
+         System.out.print(").");
+         printStep(step.next);
+      }
+      else if (step instanceof TypeStep) {
+         System.out.print(String.format("%s[%s].", ((TypeStep) step).name, ((TypeStep) step).type));
+         printStep(step.next);
+      }
+   }
+
    public void update() {
       for (Asset asset : assets) {
          asset.inheritAttackSteps();
@@ -231,6 +261,12 @@ public class CompilerModel {
       for (Asset asset : assets) {
          for (AttackStep attackStep : asset.attackSteps) {
             System.out.println(String.format("Iterating children inside %s$%s", asset.name, attackStep.name));
+
+            for (Step step : attackStep.steps) {
+               System.out.println("__step");
+               printStep(step);
+            }
+
             for (AttackStepPointer attackStepPointer : attackStep.childPointers) {
 
                String assetName = asset.name;
@@ -278,7 +314,7 @@ public class CompilerModel {
                   AttackStepPointer newParent = addStepPointer();
                   newParent.attackStepPointer = parent;
                   parent = newParent;
-                  parent.asset = attackStepPointer.asset;
+                  parent.asset = getAsset(assetName);
                   parent.type = type;
                }
                // Iteration through pointers are complete and we should now be

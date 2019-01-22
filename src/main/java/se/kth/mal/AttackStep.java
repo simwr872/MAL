@@ -5,7 +5,10 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 
+import se.kth.mal.steps.Step;
+
 public class AttackStep {
+   List<Step>                     steps                     = new ArrayList<>();
    boolean                        isSpecialization;
    String                         superAttackStepName       = "";
    Boolean                        hasSpecialization         = false;
@@ -192,7 +195,7 @@ public class AttackStep {
    }
 
    public void setRationale(String rationale) {
-	  this.rationale = rationale;
+      this.rationale = rationale;
    }
 
    public String getRationale() {
