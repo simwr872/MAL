@@ -215,4 +215,8 @@ public class Association {
       }
       return null;
    }
+
+   public void printInfo() {
+      System.out.println(String.format("[%s]%s <-> [%s]%s", leftAssetName, leftRoleName, rightAssetName, rightRoleName));
+   }
 }

@@ -25,7 +25,6 @@ import java.util.Set;
 import se.kth.mal.Asset;
 import se.kth.mal.Association;
 import se.kth.mal.AttackStep;
-import se.kth.mal.AttackStepPointer;
 import se.kth.mal.CompilerModel;
 
 // The JavaWriter produces executable Java code for securiCAD simulator.
@@ -236,7 +235,7 @@ public class SecuriCADCodeGenerator {
             + "import com.foreseeti.corelib.util.FProbSet;\n" + "import com.foreseeti.corelib.util.FProb;\n" + "import com.foreseeti.corelib.FAnnotations.*;\n" + "import java.util.ArrayList;\n"
             + "import java.util.HashSet;\n" + "import java.util.List;\n" + "import java.util.Set;\n" + "import com.foreseeti.corelib.BaseSample;\n" + "import static org.junit.Assert.assertTrue;\n"
             + "import com.foreseeti.simulator.Asset;\n" + "import com.foreseeti.simulator.AttackStep;\n" + "import com.foreseeti.simulator.AttackStepMax;\n"
-            + "import com.foreseeti.simulator.AttackStepMin;\n" + "import com.foreseeti.simulator.Defense;";
+            + "import com.foreseeti.simulator.AttackStepMin;\n" + "import com.foreseeti.simulator.Defense;\n" + "import java.util.stream.Collectors;";
       writer.println(imports);
    }
 
@@ -268,7 +267,7 @@ public class SecuriCADCodeGenerator {
          abs = "abstract";
       }
       else {
-         writer.print(String.format("@DisplayClass(category = Category.%s  %s  %s)\n", asset.getCategory(), mandatory, nonmandatory));
+         writer.print(String.format("@DisplayClass(category = Category.%s  %s  %s)\n", "System", mandatory, nonmandatory));
          writer.print(String.format("@TypeName(name = \"%s\")\n", asset.getName()));
       }
 
@@ -813,117 +812,10 @@ public class SecuriCADCodeGenerator {
       writer.println("   }\n");
    }
 
-   void printPointer(String prefix, AttackStepPointer pointer) {
-      if (pointer.getAttackStep() != null) {
-         // We are at the final step
-         if (prefix.isEmpty()) {
-            // We are also at the first step, self referencing
-            writer.println(String.format("if (%s != null) {//selfref", pointer.getAttackStep().getName()));
-            writer.println(String.format("set.add(%s);", pointer.getAttackStep().getName()));
-            writer.println("}");
-         }
-         else {
-            writer.println(String.format("set.add(%s%s);", prefix, pointer.getAttackStep().getName()));
-         }
-      }
-      else if (pointer.getMultiplicity().equals("0-1") || pointer.getMultiplicity().equals("1")) {
-         writer.println(String.format("if (%s%s(null) != null) {", prefix, pointer.getRoleName()));
-         if (!pointer.getType().isEmpty()) {
-            writer.println(String.format("if (%s%s(null) instanceof %s) {", prefix, pointer.getRoleName(), pointer.getType()));
-         }
-         printPointer(String.format("%s%s(null).", prefix, pointer.getRoleName()), pointer.getAttackStepPointer());
-         writer.println("}");
-         writer.println(pointer.getType().isEmpty() ? "" : "}");
-      }
-      else {
-         writer.println(String.format("for (%s %s : %s%s(null)) {", pointer.getAsset().getName(), pointer.getAsset().getDecapitalizedName(), prefix, pointer.getRoleName()));
-         if (!pointer.getType().isEmpty()) {
-            writer.println(String.format("if (%s instanceof %s) {", pointer.getAsset().getDecapitalizedName(), pointer.getType()));
-         }
-         printPointer(String.format("%s.", pointer.getAsset().getDecapitalizedName()), pointer.getAttackStepPointer());
-         writer.println("}");
-         writer.println(pointer.getType().isEmpty() ? "" : "}");
-      }
-   }
-
    void printUpdateChildren(AttackStep attackStep) {
-      if (!attackStep.childPointers.isEmpty()) {
-         writer.println("@Override");
-         writer.println("public Set<AttackStep> getAttackStepChildren()  {");
-         if (!attackStep.isSpecialization()) {
-            writer.println("Set<AttackStep> set = new HashSet<>(super.getAttackStepChildren());");
-         }
-         else {
-            writer.println("Set<AttackStep> set = new HashSet<>();");
-         }
-         for (AttackStepPointer childPointer : attackStep.childPointers) {
-            printPointer("", childPointer);
-         }
-         writer.println("return set;");
-         writer.println("}");
-      }
-   }
-
-   void printParentPointer(String prefix, AttackStepPointer pointer) {
-      if (pointer.getAttackStep() != null) {
-         // We are at the final step
-         String suffix = pointer.getAttackStep().isDefense() ? ".disable" : "";
-         if (prefix.isEmpty()) {
-            // We are also at the first step, self referencing
-            writer.println(String.format("if (%s != null) {//selfref", pointer.getAttackStep().getName()));
-            writer.println(String.format("sample.addExpectedParent(this, %s%s);", pointer.getAttackStep().getName(), suffix));
-            writer.println("}");
-         }
-         else {
-            prefix = prefix.substring(0, prefix.length() - 1);
-            writer.println(String.format("if (%s instanceof %s) {", prefix, pointer.getAttackStep().getAsset().getName()));
-            writer.println(String.format("sample.addExpectedParent(this, ((%s)%s).%s%s);", pointer.getAttackStep().getAsset().getName(), prefix, pointer.getAttackStep().getName(), suffix));
-            writer.println("}");
-         }
-      }
-      else if (pointer.getRoleName().isEmpty()) {
-         // Special prepended parent with only type and pointer
-         writer.println(String.format("if (%s.this instanceof %s) {", pointer.getAsset().getName(), pointer.getType()));
-         printParentPointer(prefix, pointer.getAttackStepPointer());
-         writer.println("}");
-      }
-      else if (pointer.getMultiplicity().equals("0-1") || pointer.getMultiplicity().equals("1")) {
-         writer.println(String.format("if (%s%s(sample) != null) {", prefix, pointer.getRoleName()));
-         if (!pointer.getType().isEmpty()) {
-            writer.println(String.format("if (%s%s(sample) instanceof %s) {//typeof", prefix, pointer.getRoleName(), pointer.getType()));
-         }
-         printParentPointer(String.format("%s%s(sample).", prefix, pointer.getRoleName()), pointer.getAttackStepPointer());
-         writer.println("}");
-         writer.println(pointer.getType().isEmpty() ? "" : "}");
-      }
-      else {
-         writer.println(String.format("for (%s %s : %s%s(null)) {", pointer.getAsset().getName(), pointer.getAsset().getDecapitalizedName(), prefix, pointer.getRoleName()));
-         if (!pointer.getType().isEmpty()) {
-            writer.println(String.format("if (%s instanceof %s) {//typeof", pointer.getAsset().getDecapitalizedName(), pointer.getType()));
-         }
-         printParentPointer(String.format("%s.", pointer.getAsset().getDecapitalizedName()), pointer.getAttackStepPointer());
-         writer.println("}");
-         writer.println(pointer.getType().isEmpty() ? "" : "}");
-      }
    }
 
    void printSetExpectedParents(AttackStep attackStep) {
-      if (!attackStep.getParentPointers().isEmpty()) {
-         writer.println("@Override");
-         writer.println("protected void setExpectedParents(ConcreteSample sample) {");
-         // When an attack step is overridden, the inheriting parents must still
-         // be able to reach it as specified in the super class.
-         if (!attackStep.getSuperAttackStepName().isEmpty()) {
-            writer.println("super.setExpectedParents(sample);");
-         }
-         if (attackStep.getExistenceRequirementRoles().size() > 0) {
-            writer.println(String.format("if (%s != null) {", attackStep.getExistenceRequirementRoles().get(0)));
-         }
-         for (AttackStepPointer parentPointer : attackStep.getParentPointers()) {
-            printParentPointer("", parentPointer);
-         }
-         writer.println("}");
-      }
    }
 
    void printConnectionHelpers(Asset asset) {

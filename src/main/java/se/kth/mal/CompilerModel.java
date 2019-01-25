@@ -1,7 +1,5 @@
 package se.kth.mal;
 
-import static org.junit.Assert.assertNotNull;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileInputStream;
@@ -21,11 +19,8 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
-import se.kth.mal.steps.FinalStep;
-import se.kth.mal.steps.NormalStep;
-import se.kth.mal.steps.SelectStep;
+import se.kth.mal.steps.Connection;
 import se.kth.mal.steps.Step;
-import se.kth.mal.steps.TypeStep;
 
 public class CompilerModel {
 
@@ -217,35 +212,25 @@ public class CompilerModel {
       }
    }
 
-   // SecuriLangListener reads strings from the .slang file into Model
-   // variables, but because the model is not yet complete, they cannot always
-   // be written to the proper place (for instance, children classes may not yet
-   // have been created when the first reference is encountered). Therefore,
-   // Model.update() makes a second pass through the model to place all
-   // information in the right place.
+   void updateStep(Step step) {
+      for (Connection connection : step.connections) {
+         System.out.println(String.format("____%s -> %s", connection.previousAsset, connection.field));
+         Association association = getConnectedAssociation(connection.previousAsset, connection.field);
+         boolean previousAssetLeft = isLeftAsset(association, connection.previousAsset);
+         connection.associationUpdate(association, previousAssetLeft);
+         int nextIndex = step.connections.indexOf(connection) + 1;
+         if (nextIndex < step.connections.size()) {
+            step.connections.get(nextIndex).previousAsset = connection.getCastedAsset();
+         }
+      }
+   }
 
-   // TODO: Rewrite the traversal of pointers with respect to new format
-
-   public void printStep(Step step) {
-      if (step instanceof FinalStep) {
-         System.out.println(((FinalStep) step).name);
+   Step parentStep(Step step) {
+      Step parent = step.reverse(step.getTargetAsset());
+      for (Connection connection : step.connections) {
+         parent.connections.add(0, connection.reverse());
       }
-      else if (step instanceof NormalStep) {
-         System.out.print(((NormalStep) step).name + ".");
-         printStep(step.next);
-      }
-      else if (step instanceof SelectStep) {
-         System.out.print("(");
-         printStep(((SelectStep) step).left);
-         System.out.print(" " + ((SelectStep) step).type + " ");
-         printStep(((SelectStep) step).right);
-         System.out.print(").");
-         printStep(step.next);
-      }
-      else if (step instanceof TypeStep) {
-         System.out.print(String.format("%s[%s].", ((TypeStep) step).name, ((TypeStep) step).type));
-         printStep(step.next);
-      }
+      return parent;
    }
 
    public void update() {
@@ -261,68 +246,10 @@ public class CompilerModel {
       for (Asset asset : assets) {
          for (AttackStep attackStep : asset.attackSteps) {
             System.out.println(String.format("Iterating children inside %s$%s", asset.name, attackStep.name));
-
             for (Step step : attackStep.steps) {
-               System.out.println("__step");
-               printStep(step);
-            }
-
-            for (AttackStepPointer attackStepPointer : attackStep.childPointers) {
-
-               String assetName = asset.name;
-               AttackStepPointer pointer = attackStepPointer;
-               AttackStepPointer parent = addStepPointer();
-               parent.attackStep = attackStep;
-               String type = "";
-               while (pointer.attackStepPointer != null) {
-                  AttackStepPointer newParent = addStepPointer();
-                  newParent.attackStepPointer = parent;
-                  parent = newParent;
-
-                  pointer.association = getConnectedAssociation(assetName, pointer.roleName);
-                  parent.association = pointer.association;
-                  parent.type = type;
-                  type = pointer.type;
-                  assertNotNull("null", pointer.association);
-                  System.out.println(String.format("    Association %s found", pointer.association.getName()));
-
-                  if (isLeftAsset(pointer.association, assetName)) {
-                     // Previous asset is on the left side of assoc
-                     assetName = pointer.association.getRightAssetName();
-                     pointer.multiplicity = pointer.association.rightMultiplicity;
-
-                     parent.multiplicity = pointer.association.leftMultiplicity;
-                     parent.asset = getAsset(pointer.association.getLeftAssetName());
-                     parent.roleName = pointer.association.getLeftRoleName();
-                  }
-                  else {
-                     assetName = pointer.association.getLeftAssetName();
-                     pointer.multiplicity = pointer.association.leftMultiplicity;
-
-                     parent.multiplicity = pointer.association.rightMultiplicity;
-                     parent.asset = getAsset(pointer.association.getRightAssetName());
-                     parent.roleName = pointer.association.getRightRoleName();
-                  }
-                  pointer.asset = getAsset(assetName);
-                  System.out.println(String.format("    Multiplicity: %s", pointer.multiplicity));
-
-                  pointer = pointer.attackStepPointer;
-               }
-               if (!type.isEmpty()) {
-                  // Step just before last step has type. We prepend empty
-                  // parent.
-                  AttackStepPointer newParent = addStepPointer();
-                  newParent.attackStepPointer = parent;
-                  parent = newParent;
-                  parent.asset = getAsset(assetName);
-                  parent.type = type;
-               }
-               // Iteration through pointers are complete and we should now be
-               // on the pointer with the attackStep rolename
-               pointer.asset = getAsset(assetName);
-               pointer.attackStep = pointer.asset.getAttackStep(pointer.roleName);
-
-               pointer.attackStep.parentPointers.add(parent);
+               updateStep(step);
+               Step parent = parentStep(step);
+               getAsset(step.getTargetAsset()).getAttackStep(step.to).parentSteps.add(parent);
             }
          }
       }

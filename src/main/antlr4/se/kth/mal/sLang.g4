@@ -149,15 +149,22 @@ attackStepType
 	;
 
 expression
-    : expression '.' expression #dot
-    | '(' expression '&' expression ')' #and
-    | '(' expression '|' expression ')' #or
-    | Identifier '[' expressionType ']' #type
-    | Identifier #normal
+    :   Identifier #immediate
+    |   (expressionStep '.' )+ Identifier #normal
+    |  '(' expressionChild (setOperator expressionChild)+ ')' ('[' Identifier ']')? ('.' expressionStep)* '.' Identifier #select
     ;
 
-expressionType
-    : Identifier
+expressionStep
+    :   Identifier ('[' Identifier ']')?
+    ;
+    
+expressionChild
+    :   Identifier ('.' Identifier)*
+    ;
+    
+setOperator
+    :   '/\\'
+    |   '\\/'
     ;
 
 Identifier

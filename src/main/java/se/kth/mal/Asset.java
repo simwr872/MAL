@@ -9,7 +9,7 @@ import java.util.Set;
 
 public class Asset {
    CompilerModel    model;
-   String           name;
+   public String    name;
    String           info;
    String           rationale;
    String           category                    = "NoCategoryName";
