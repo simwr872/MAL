@@ -31,7 +31,12 @@ public class Step {
    }
 
    public Step reverse(String asset) {
-      return new Step(asset, this.to, this.from);
+      Step step = new Step(asset, to, from);
+      for (Connection connection : connections) {
+         step.connections.add(0, connection.reverse());
+      }
+      return step;
+
    }
 
    public int printCast(PrintWriter writer) {
@@ -42,8 +47,30 @@ public class Step {
       return 0;
    }
 
-   public void print() {
-      System.out.format("Asset [%s]$[%s] to [%s]$[%s]\n", asset, from, getTargetAsset(), to);
+   public void print(PrintWriter writer, String format) {
+      print(writer, format, "");
+   }
+
+   public void print(PrintWriter writer, String format, String suffix) {
+      print(writer, format, suffix, true);
+   }
+
+   public void print(PrintWriter writer, String format, String suffix, boolean endStep) {
+      int close = printCast(writer);
+      String prefix = "";
+      for (Connection connection : connections) {
+         prefix = connection.print(writer, prefix, suffix);
+         close += (connection.cast.isEmpty() ? 1 : 2);
+      }
+      if (endStep) {
+         writer.printf(format, prefix + to);
+      }
+      else {
+         writer.printf(format, prefix.substring(0, prefix.length() - 1));
+      }
+      while (close-- > 0) {
+         writer.println("}//stepend");
+      }
    }
 
 }

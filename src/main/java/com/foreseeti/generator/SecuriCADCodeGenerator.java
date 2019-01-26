@@ -26,6 +26,7 @@ import se.kth.mal.Asset;
 import se.kth.mal.Association;
 import se.kth.mal.AttackStep;
 import se.kth.mal.CompilerModel;
+import se.kth.mal.steps.Step;
 
 // The JavaWriter produces executable Java code for securiCAD simulator.
 public class SecuriCADCodeGenerator {
@@ -813,9 +814,41 @@ public class SecuriCADCodeGenerator {
    }
 
    void printUpdateChildren(AttackStep attackStep) {
+      if (!attackStep.steps.isEmpty()) {
+
+         writer.println("@Override");
+         writer.println("public Set<AttackStep> getAttackStepChildren() {");
+         if (!attackStep.isSpecialization()) {
+            writer.println("Set<AttackStep> set = new HashSet<>(super.getAttackStepChildren());");
+         }
+         else {
+            writer.println("Set<AttackStep> set = new HashSet<>();");
+         }
+         for (Step step : attackStep.steps) {
+            step.print(writer, "set.add(%s);\n", "(null)");
+         }
+         writer.println("return set;");
+         writer.println("}");
+      }
    }
 
    void printSetExpectedParents(AttackStep attackStep) {
+      if (!attackStep.parentSteps.isEmpty()) {
+         writer.println("@Override");
+         writer.println("protected void setExpectedParents(ConcreteSample sample) {");
+         if (!attackStep.getSuperAttackStepName().isEmpty()) {
+            writer.println("super.setExpectedParents(sample);");
+         }
+         for (Step step : attackStep.parentSteps) {
+            if (model.getAsset(step.getTargetAsset()).getAttackStep(step.to).isDefense()) {
+               step.print(writer, "sample.addExpectedParent(this, %s.disable);\n", "(sample)");
+            }
+            else {
+               step.print(writer, "sample.addExpectedParent(this, %s);\n", "(sample)");
+            }
+         }
+         writer.println("}");
+      }
    }
 
    void printConnectionHelpers(Asset asset) {

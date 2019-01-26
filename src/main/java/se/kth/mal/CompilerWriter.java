@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import se.kth.mal.steps.Connection;
 import se.kth.mal.steps.Step;
 
 // After changing sLang.g4, in bash, in
@@ -490,25 +489,12 @@ public class CompilerWriter {
       writer.println("   }\n");
    }
 
-   void printStep(Step step, String format) {
-      int close = step.printCast(writer);
-      String prefix = "";
-      for (Connection connection : step.connections) {
-         prefix = connection.print(writer, prefix);
-         close += (connection.cast.isEmpty() ? 1 : 2);
-      }
-      writer.printf(format, prefix + step.to);
-      while (close-- > 0) {
-         writer.println("}");
-      }
-   }
-
    void printUpdateChildren(AttackStep attackStep) {
       if (!attackStep.steps.isEmpty()) {
          writer.println("@Override");
          writer.println("public void updateChildren(Set<AttackStep> activeAttackSteps) {");
          for (Step step : attackStep.steps) {
-            printStep(step, "%s.updateTtc(this, ttc, activeAttackSteps);\n");
+            step.print(writer, "%s.updateTtc(this, ttc, activeAttackSteps);\n");
          }
          writer.println("}");
       }
@@ -522,12 +508,11 @@ public class CompilerWriter {
             writer.println("super.setExpectedParents();");
          }
          for (Step step : attackStep.parentSteps) {
-            step.print();
             if (model.getAsset(step.getTargetAsset()).getAttackStep(step.to).isDefense()) {
-               printStep(step, "addExpectedParent(%s.disable);\n");
+               step.print(writer, "addExpectedParent(%s.disable);\n");
             }
             else {
-               printStep(step, "addExpectedParent(%s);\n");
+               step.print(writer, "addExpectedParent(%s);\n");
             }
          }
          writer.println("}");

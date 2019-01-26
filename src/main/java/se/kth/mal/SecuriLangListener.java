@@ -3,11 +3,14 @@ package se.kth.mal;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import se.kth.mal.sLangParser.CategoryDeclarationContext;
+import se.kth.mal.sLangParser.ExpressionChildContext;
 import se.kth.mal.sLangParser.ExpressionStepContext;
 import se.kth.mal.sLangParser.ImmediateContext;
 import se.kth.mal.sLangParser.NormalContext;
 import se.kth.mal.sLangParser.SelectContext;
+import se.kth.mal.sLangParser.SetOperatorContext;
 import se.kth.mal.steps.Connection;
+import se.kth.mal.steps.SelectConnection;
 import se.kth.mal.steps.Step;
 
 public class SecuriLangListener extends sLangBaseListener {
@@ -130,30 +133,33 @@ public class SecuriLangListener extends sLangBaseListener {
 
    @Override
    public void enterSelect(SelectContext ctx) {
-      // Chain chain = new Chain(asset.name, attackStep.name);
-      // SelectLink select = new SelectLink();
-      // for (ExpressionChildContext child : ctx.expressionChild()) {
-      // Chain childChain = new Chain(asset.name, "");
-      // for (TerminalNode step : child.Identifier()) {
-      // childChain.links.add(new Link(step.getText()));
-      // }
-      // select.chains.add(childChain);
-      // }
-      // for (SetOperatorContext operator : ctx.setOperator()) {
-      // select.operators.add(operator.getText());
-      // }
-      // chain.links.addAll(parseNormalSteps(ctx.expressionStep()));
-      // if (ctx.Identifier().size() > 1) {
-      // select.type = ctx.Identifier(0).getText();
-      // chain.targetStep = ctx.Identifier(1).getText();
-      // }
-      // else {
-      // chain.targetStep = ctx.Identifier(0).getText();
-      // }
-      // chain.links.add(select);
-      // attackStep.chains.add(chain);
+      String attack = (ctx.Identifier().size() > 1 ? ctx.Identifier(1).getText() : ctx.Identifier(0).getText());
+      String cast = (ctx.Identifier().size() > 1 ? ctx.Identifier(0).getText() : "");
+      Step step = new Step(asset.name, attackStep.name, attack);
+      SelectConnection select = new SelectConnection();
+      select.previousAsset = asset.name;
+      select.cast = cast;
+      for (ExpressionChildContext ecc : ctx.expressionChild()) {
+         Step childStep = new Step(asset.name, attackStep.name, "");
+         for (TerminalNode node : ecc.Identifier()) {
+            Connection connection = new Connection(node.getText());
+            if (childStep.connections.isEmpty()) {
+               connection.previousAsset = asset.name;
+            }
+            childStep.connections.add(connection);
+         }
+         select.steps.add(childStep);
+      }
+      for (SetOperatorContext soc : ctx.setOperator()) {
+         select.operators.add(soc.getText());
+      }
+      step.connections.add(select);
+
+      for (ExpressionStepContext esc : ctx.expressionStep()) {
+         String _cast = (esc.Identifier().size() > 1 ? esc.Identifier(1).getText() : "");
+         Connection connection = new Connection(esc.Identifier(0).getText(), _cast);
+         step.connections.add(connection);
+      }
+      attackStep.steps.add(step);
    }
-
-   // --------------
-
 }

@@ -60,13 +60,13 @@ public class Connection {
       return (multiplicity.equals("*") || multiplicity.equals("1-*"));
    }
 
-   private String decapitalize(final String line) {
+   public String decapitalize(final String line) {
       return Character.toLowerCase(line.charAt(0)) + line.substring(1);
    }
 
-   public String print(PrintWriter writer, String prefix) {
+   public String print(PrintWriter writer, String prefix, String suffix) {
       if (isSet()) {
-         writer.printf("for (%s %s : %s) {\n", asset, decapitalize(asset), prefix + field);
+         writer.printf("for (%s %s : %s) {\n", asset, decapitalize(asset), prefix + field + suffix);
          if (!cast.isEmpty()) {
             writer.printf("if (%s instanceof %s) {\n", decapitalize(asset), cast);
             prefix = String.format("((%s) %s).", cast, decapitalize(asset));
@@ -78,12 +78,11 @@ public class Connection {
       else {
          writer.printf("if (%s != null) {\n", prefix + field);
          if (!cast.isEmpty()) {
-            writer.println("// cast present in non set");
-            writer.printf("if (%s instanceof %s) {\n", prefix + field, cast);
-            prefix = String.format("((%s) %s).", cast, prefix + field);
+            writer.printf("if (%s instanceof %s) {\n", prefix + field + suffix, cast);
+            prefix = String.format("((%s) %s).", cast, prefix + field + suffix);
          }
          else {
-            prefix = prefix + field + ".";
+            prefix = prefix + field + suffix + ".";
          }
       }
 

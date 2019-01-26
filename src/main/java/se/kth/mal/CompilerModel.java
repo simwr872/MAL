@@ -20,6 +20,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
 import se.kth.mal.steps.Connection;
+import se.kth.mal.steps.SelectConnection;
 import se.kth.mal.steps.Step;
 
 public class CompilerModel {
@@ -214,23 +215,22 @@ public class CompilerModel {
 
    void updateStep(Step step) {
       for (Connection connection : step.connections) {
-         System.out.println(String.format("____%s -> %s", connection.previousAsset, connection.field));
-         Association association = getConnectedAssociation(connection.previousAsset, connection.field);
-         boolean previousAssetLeft = isLeftAsset(association, connection.previousAsset);
-         connection.associationUpdate(association, previousAssetLeft);
+         if (connection instanceof SelectConnection) {
+            for (Step childStep : ((SelectConnection) connection).steps) {
+               updateStep(childStep);
+            }
+            ((SelectConnection) connection).update();
+         }
+         else {
+            Association association = getConnectedAssociation(connection.previousAsset, connection.field);
+            boolean previousAssetLeft = isLeftAsset(association, connection.previousAsset);
+            connection.associationUpdate(association, previousAssetLeft);
+         }
          int nextIndex = step.connections.indexOf(connection) + 1;
          if (nextIndex < step.connections.size()) {
             step.connections.get(nextIndex).previousAsset = connection.getCastedAsset();
          }
       }
-   }
-
-   Step parentStep(Step step) {
-      Step parent = step.reverse(step.getTargetAsset());
-      for (Connection connection : step.connections) {
-         parent.connections.add(0, connection.reverse());
-      }
-      return parent;
    }
 
    public void update() {
@@ -248,7 +248,7 @@ public class CompilerModel {
             System.out.println(String.format("Iterating children inside %s$%s", asset.name, attackStep.name));
             for (Step step : attackStep.steps) {
                updateStep(step);
-               Step parent = parentStep(step);
+               Step parent = step.reverse(step.getTargetAsset());
                getAsset(step.getTargetAsset()).getAttackStep(step.to).parentSteps.add(parent);
             }
          }
