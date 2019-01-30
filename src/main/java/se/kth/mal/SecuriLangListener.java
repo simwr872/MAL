@@ -58,8 +58,6 @@ public class SecuriLangListener extends sLangBaseListener {
             ctx.rightRelation().getText(), ctx.multiplicity(1).getText(), ctx.Identifier(3).getText(), ctx.Identifier(4).getText());
    }
 
-   // TODO: Clean up referring to attacksteps/existance reqs.
-
    @Override
    public void enterAttackStepDeclaration(sLangParser.AttackStepDeclarationContext ctx) {
       attackStep = asset.addAttackStep(true, ctx.attackStepType().getText(), ctx.Identifier().getText());
@@ -105,20 +103,18 @@ public class SecuriLangListener extends sLangBaseListener {
          attackStep.description = ctx.description().StringLiteral().getText();
       }
    }
-   // --------------
-   // Reached attack steps take the form of 'a.b[c].(d & e).f'. Called chains,
-   // each step separated by a dot. An entire chain will always end with an
-   // attack step except for when a chain is started inside parenthesis, there
-   // it will end with a set.
 
    @Override
    public void enterImmediate(ImmediateContext ctx) {
+      // Immediate step of form '-> compromise'
       Step step = new Step(asset.name, attackStep.name, ctx.Identifier().getText());
       attackStep.steps.add(step);
    }
 
    @Override
    public void enterNormal(NormalContext ctx) {
+      // Normal step with any amount of steps, may or may not have specified
+      // type.
       Step step = new Step(asset.name, attackStep.name, ctx.Identifier().getText());
       for (ExpressionStepContext esc : ctx.expressionStep()) {
          String cast = (esc.Identifier().size() > 1 ? esc.Identifier(1).getText() : "");
@@ -133,6 +129,8 @@ public class SecuriLangListener extends sLangBaseListener {
 
    @Override
    public void enterSelect(SelectContext ctx) {
+      // Select step, may have any amount of intermediate steps. Select step may
+      // also have type, followed by any amount of normal steps.
       String attack = (ctx.Identifier().size() > 1 ? ctx.Identifier(1).getText() : ctx.Identifier(0).getText());
       String cast = (ctx.Identifier().size() > 1 ? ctx.Identifier(0).getText() : "");
       Step step = new Step(asset.name, attackStep.name, attack);
@@ -141,9 +139,10 @@ public class SecuriLangListener extends sLangBaseListener {
       select.cast = cast;
       for (ExpressionChildContext ecc : ctx.expressionChild()) {
          Step childStep = new Step(asset.name, attackStep.name, "");
-         for (TerminalNode node : ecc.Identifier()) {
-            Connection connection = new Connection(node.getText());
-            if (childStep.connections.isEmpty()) {
+         for (ExpressionStepContext esc : ecc.expressionStep()) {
+            String _cast = (esc.Identifier().size() > 1 ? esc.Identifier(1).getText() : "");
+            Connection connection = new Connection(esc.Identifier(0).getText(), _cast);
+            if (step.connections.isEmpty()) {
                connection.previousAsset = asset.name;
             }
             childStep.connections.add(connection);

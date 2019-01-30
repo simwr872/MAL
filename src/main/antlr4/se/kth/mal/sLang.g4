@@ -157,9 +157,9 @@ expression
 expressionStep
     :   Identifier ('[' Identifier ']')?
     ;
-    
+
 expressionChild
-    :   Identifier ('.' Identifier)*
+    :   expressionStep ('.' expressionStep)*
     ;
     
 setOperator

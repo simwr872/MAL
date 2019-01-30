@@ -236,7 +236,7 @@ public class SecuriCADCodeGenerator {
             + "import com.foreseeti.corelib.util.FProbSet;\n" + "import com.foreseeti.corelib.util.FProb;\n" + "import com.foreseeti.corelib.FAnnotations.*;\n" + "import java.util.ArrayList;\n"
             + "import java.util.HashSet;\n" + "import java.util.List;\n" + "import java.util.Set;\n" + "import com.foreseeti.corelib.BaseSample;\n" + "import static org.junit.Assert.assertTrue;\n"
             + "import com.foreseeti.simulator.Asset;\n" + "import com.foreseeti.simulator.AttackStep;\n" + "import com.foreseeti.simulator.AttackStepMax;\n"
-            + "import com.foreseeti.simulator.AttackStepMin;\n" + "import com.foreseeti.simulator.Defense;\n" + "import java.util.stream.Collectors;";
+            + "import com.foreseeti.simulator.AttackStepMin;\n" + "import com.foreseeti.simulator.Defense;";
       writer.println(imports);
    }
 
@@ -268,7 +268,7 @@ public class SecuriCADCodeGenerator {
          abs = "abstract";
       }
       else {
-         writer.print(String.format("@DisplayClass(category = Category.%s  %s  %s)\n", "System", mandatory, nonmandatory));
+         writer.print(String.format("@DisplayClass(category = Category.%s  %s  %s)\n", asset.getCategory(), mandatory, nonmandatory));
          writer.print(String.format("@TypeName(name = \"%s\")\n", asset.getName()));
       }
 
@@ -839,6 +839,9 @@ public class SecuriCADCodeGenerator {
          if (!attackStep.getSuperAttackStepName().isEmpty()) {
             writer.println("super.setExpectedParents(sample);");
          }
+         if (!attackStep.getExistenceRequirementRoles().isEmpty()) {
+            writer.println(String.format("if (%s != null) {", attackStep.getExistenceRequirementRoles().get(0)));
+         }
          for (Step step : attackStep.parentSteps) {
             if (model.getAsset(step.getTargetAsset()).getAttackStep(step.to).isDefense()) {
                step.print(writer, "sample.addExpectedParent(this, %s.disable);\n", "(sample)");
@@ -846,6 +849,9 @@ public class SecuriCADCodeGenerator {
             else {
                step.print(writer, "sample.addExpectedParent(this, %s);\n", "(sample)");
             }
+         }
+         if (!attackStep.getExistenceRequirementRoles().isEmpty()) {
+            writer.println("}");
          }
          writer.println("}");
       }

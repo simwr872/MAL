@@ -122,17 +122,13 @@ public class CompilerModel {
       return a;
    }
 
-   public AttackStepPointer addStepPointer() {
-      return new AttackStepPointer();
-   }
-
    public Asset getAsset(String name) {
       for (Asset asset : this.assets) {
          if (asset.name.equals(name)) {
             return asset;
          }
       }
-      return null;
+      throw new Error(String.format("No asset named '%s'", name));
    }
 
    public List<Association> getAssociations(Asset asset) {
@@ -170,14 +166,13 @@ public class CompilerModel {
       }
       // Does the association exist for the super asset of leftAsset?
       Asset leftAsset = getAsset(leftAssetName);
-      if (!leftAsset.superAssetName.equals("")) {
-         Association association = getConnectedAssociation(leftAsset.superAssetName, rightRoleName);
-         if (association != null) {
-            return association;
-         }
+      if (!leftAsset.superAssetName.isEmpty()) {
+         System.out.println(String.format("No association from asset '%s' to field [%s]", leftAssetName, rightRoleName));
+         System.out.println(String.format("  Checking extended parent '%s' to field [%s]", leftAsset.superAssetName, rightRoleName));
+         return getConnectedAssociation(leftAsset.superAssetName, rightRoleName);
       }
 
-      return null;
+      throw new Error(String.format("No association from asset '%s' to field [%s]", leftAssetName, rightRoleName));
    }
 
    public String getConnectedAssetName(String leftAssetName, String rightRoleName) {
@@ -213,11 +208,24 @@ public class CompilerModel {
       }
    }
 
+   /**
+    * Updates all connections of a step with their associations.
+    *
+    * @param step
+    *           Step to be updated.
+    */
    void updateStep(Step step) {
       for (Connection connection : step.connections) {
          if (connection instanceof SelectConnection) {
             for (Step childStep : ((SelectConnection) connection).steps) {
                updateStep(childStep);
+            }
+            String targetAsset = ((SelectConnection) connection).steps.get(0).getTargetAsset();
+            for (int i = 1; i < ((SelectConnection) connection).steps.size(); i++) {
+               String target = ((SelectConnection) connection).steps.get(i).getTargetAsset();
+               if (!target.equals(targetAsset)) {
+                  throw new Error(String.format("Different set type on index %d; %s =/= %s", i, targetAsset, target));
+               }
             }
             ((SelectConnection) connection).update();
          }

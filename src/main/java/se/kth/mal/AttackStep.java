@@ -23,7 +23,6 @@ public class AttackStep {
    String                     rationale;
    String                     ttcFunction               = "Default";
    List<Float>                ttcParameters             = new ArrayList<>();
-   List<AttackStepPointer>    parentPointers            = new ArrayList<>();
    List<String>               existenceRequirementRoles = new ArrayList<>();
    CompilerModel              model;
 
@@ -162,10 +161,6 @@ public class AttackStep {
 
    public List<Float> getTtcParameters() {
       return ttcParameters;
-   }
-
-   public List<AttackStepPointer> getParentPointers() {
-      return parentPointers;
    }
 
    public List<String> getExistenceRequirementRoles() {

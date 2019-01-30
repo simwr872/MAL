@@ -119,27 +119,16 @@ public class CompilerWriter {
                      }
                   }
                   AttackStep superAttackStep = attackStep.getSuper();
-                  // if (attackStep.childPointers.size() > 0 || superAttackStep
-                  // != null) {
-                  // writeToJsonStringln(" \"targets\": [");
-                  // for (AttackStepPointer childPointer :
-                  // attackStep.childPointers) {
-                  // AttackStepPointer ptr = childPointer;
-                  // while (ptr.getAttackStep() == null) {
-                  // ptr = ptr.getAttackStepPointer();
-                  // }
-                  // writeToJsonStringln(String.format("{\"name\": \"%s\",
-                  // \"entity_name\": \"%s\", \"size\": 4000},",
-                  // ptr.getAttackStep().getName(), ptr.getAsset().getName()));
-                  // }
-                  // if (superAttackStep != null) {
-                  // writeToJsonStringln(" {\"name\": \"" + superAttackStep.name
-                  // + "\", \"entity_name\": \"" + superAttackStep.asset.name +
-                  // "\", \"size\": 4000},");
-                  // }
-                  // backtrackJsonString();
-                  // writeToJsonStringln(" ],");
-                  // }
+                  if (!attackStep.steps.isEmpty() || superAttackStep != null) {
+                     writeToJsonStringln("\"targets\": [");
+                     for (Step step : attackStep.steps) {
+                        writeToJsonStringln(String.format("{\"name\": \"%s\", \"entity_name\": \"%s\", \"size\": 4000}", step.to, step.getTargetAsset()));
+                     }
+                     if (superAttackStep != null) {
+                        writeToJsonStringln(String.format("{\"name\": \"%s\", \"entity_name\": \"%s\", \"size\": 4000}", superAttackStep.name, superAttackStep.asset.name));
+                     }
+                     writeToJsonStringln("],");
+                  }
                   backtrackJsonString();
                   writeToJsonStringln("    },");
                }
@@ -208,7 +197,7 @@ public class CompilerWriter {
    }
 
    void printImports() {
-      String imports = "import java.util.ArrayList;\nimport java.util.HashSet;\nimport java.util.List;\nimport java.util.Set;\nimport static org.junit.Assert.assertTrue;\n\nimport core.Asset;\nimport core.AttackStep;\nimport core.AttackStepMax;\nimport core.AttackStepMin;\nimport core.Defense;\nimport java.util.stream.Collectors;";
+      String imports = "import java.util.ArrayList;\nimport java.util.HashSet;\nimport java.util.List;\nimport java.util.Set;\nimport static org.junit.Assert.assertTrue;\n\nimport core.Asset;\nimport core.AttackStep;\nimport core.AttackStepMax;\nimport core.AttackStepMin;\nimport core.Defense;";
       writer.println(imports);
    }
 
@@ -507,6 +496,9 @@ public class CompilerWriter {
          if (!attackStep.getSuperAttackStepName().isEmpty()) {
             writer.println("super.setExpectedParents();");
          }
+         if (!attackStep.getExistenceRequirementRoles().isEmpty()) {
+            writer.println(String.format("if (%s != null) {", attackStep.getExistenceRequirementRoles().get(0)));
+         }
          for (Step step : attackStep.parentSteps) {
             if (model.getAsset(step.getTargetAsset()).getAttackStep(step.to).isDefense()) {
                step.print(writer, "addExpectedParent(%s.disable);\n");
@@ -514,6 +506,9 @@ public class CompilerWriter {
             else {
                step.print(writer, "addExpectedParent(%s);\n");
             }
+         }
+         if (!attackStep.getExistenceRequirementRoles().isEmpty()) {
+            writer.println("}");
          }
          writer.println("}");
       }

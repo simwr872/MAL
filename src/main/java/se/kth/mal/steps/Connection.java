@@ -4,13 +4,28 @@ import java.io.PrintWriter;
 
 import se.kth.mal.Association;
 
+/**
+ * A connection contains information how to move from one link in the chain to
+ * another when traversing a reached attack step. For example in the reached
+ * attack step compromise of an asset Network, a chain could be
+ * 'routers.dataflows.compromise'. The chain has two links, routers and
+ * dataflows, finished with an attack step compromise. 2 connections would be
+ * made to traverse back and forth in the links.
+ */
 public class Connection {
-   public String previousAsset        = "";
-   public String previousCast         = "";
+   public String previousAsset        = ""; // Previous asset according to the
+                                            // association
+   public String previousCast         = ""; // What the previous asset must be
+                                            // cast as to be valid. Used
+                                            // whenever an asset extends some
+                                            // other asset, but the association
+                                            // is made with the parent asset.
    public String previousField        = "";
    public String previousMultiplicity = "";
-   public String asset                = "";
-   public String cast                 = "";
+   public String asset                = ""; // Asset according to association
+   public String cast                 = ""; // What the asset must be cast to,
+                                            // used at the users discretion
+                                            // using typeof operator.
    public String field                = "";
    public String multiplicity         = "";
 
@@ -26,6 +41,12 @@ public class Connection {
       this.cast = cast;
    }
 
+   /**
+    * Creates a new but reversed connection. When a connection is updated
+    * completely it may be reversed to represent the other direction.
+    *
+    * @return Reversed connection
+    */
    public Connection reverse() {
       Connection connection = new Connection();
       connection.previousAsset = this.asset;
@@ -39,6 +60,18 @@ public class Connection {
       return connection;
    }
 
+   /**
+    * Creating a connection only requires the field name. A chain of connections
+    * must thereafter be updated by traversing them and finding corresponding
+    * associations. The first connection must have a previous asset to begin
+    * with, this method then updates the missing fields and prepares it for the
+    * next connection to be updated.
+    *
+    * @param association
+    *           Association between previous asset and current field.
+    * @param previousAssetLeft
+    *           True if previous asset was on left side of association.
+    */
    public void associationUpdate(Association association, boolean previousAssetLeft) {
       this.previousField = (previousAssetLeft ? association.getLeftRoleName() : association.getRightRoleName());
       this.previousMultiplicity = (previousAssetLeft ? association.getLeftMultiplicity() : association.getRightMultiplicity());
@@ -48,7 +81,6 @@ public class Connection {
       if (!previous.equals(previousAsset)) {
          previousCast = previousAsset;
          previousAsset = previous;
-         // previousCast = previous;
       }
    }
 
@@ -64,6 +96,20 @@ public class Connection {
       return Character.toLowerCase(line.charAt(0)) + line.substring(1);
    }
 
+   /**
+    * Prints this connection as java code.
+    *
+    * @param writer
+    *           The writer to write to.
+    * @param prefix
+    *           Function may be called after another connection and will have an
+    *           iterator or previous value to respect.
+    * @param suffix
+    *           The foreseeti backend use an additional abstraction of sets and
+    *           must call a function to obtain the actual set. Therefore we
+    *           support a suffix to be used.
+    * @return New prefix.
+    */
    public String print(PrintWriter writer, String prefix, String suffix) {
       if (isSet()) {
          writer.printf("for (%s %s : %s) {\n", asset, decapitalize(asset), prefix + field + suffix);
@@ -88,5 +134,4 @@ public class Connection {
 
       return prefix;
    }
-
 }

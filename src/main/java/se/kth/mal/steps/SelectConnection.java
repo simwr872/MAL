@@ -6,6 +6,12 @@ import java.util.List;
 
 import org.apache.commons.lang.RandomStringUtils;
 
+/**
+ * A select connection enables set operations in mal. This contains a number of
+ * steps and a number of operations to apply between them. Printing this
+ * connections requires intermediate steps to be appended to separate sets and
+ * then the operations get applied.
+ */
 public class SelectConnection extends Connection {
    public List<Step>   steps     = new ArrayList<>();
    public List<String> operators = new ArrayList<>();
@@ -18,7 +24,6 @@ public class SelectConnection extends Connection {
 
    @Override
    public Connection reverse() {
-
       SelectConnection connection = new SelectConnection();
       connection.previousAsset = this.asset;
       connection.previousCast = this.cast;
@@ -41,24 +46,24 @@ public class SelectConnection extends Connection {
       List<String> sets = new ArrayList<>();
       for (Step step : steps) {
          String set = RandomStringUtils.randomAlphabetic(5);
-         writer.printf("Set<%s> %s = new HashSet<>(); // select child\n", asset, set);
-         step.print(writer, set + ".add(%s); // adding to select set\n", setSuffix, false);
+         writer.printf("Set<%s> %s = new HashSet<>();\n", asset, set);
+         step.print(writer, set + ".add(%s);\n", setSuffix, false);
          sets.add(set);
       }
 
       for (int i = 1; i < sets.size(); i++) {
          String operator = operators.get(i - 1);
          if (operator.equals("\\/")) {
-            writer.printf("%s.addAll(%s); // union\n", sets.get(0), sets.get(i));
+            writer.printf("%s.addAll(%s);\n", sets.get(0), sets.get(i));
          }
          else if (operator.equals("/\\")) {
-            writer.printf("%s.retainAll(%s); // intersection\n", sets.get(0), sets.get(i));
+            writer.printf("%s.retainAll(%s);\n", sets.get(0), sets.get(i));
          }
       }
 
-      writer.printf("for (%s %s : %s) { // iterating final select set\n", asset, decapitalize(asset), sets.get(0));
+      writer.printf("for (%s %s : %s) {\n", asset, decapitalize(asset), sets.get(0));
       if (!cast.isEmpty()) {
-         writer.printf("if (%s instanceof %s) { // select cast\n", decapitalize(asset), cast);
+         writer.printf("if (%s instanceof %s) {\n", decapitalize(asset), cast);
          prefix = String.format("((%s) %s).", cast, decapitalize(asset));
       }
       else {
