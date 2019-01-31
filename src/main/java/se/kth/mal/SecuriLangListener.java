@@ -1,49 +1,55 @@
 package se.kth.mal;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import se.kth.mal.sLangParser.AmbiguousNameContext;
+import se.kth.mal.sLangParser.CategoryDeclarationContext;
+import se.kth.mal.sLangParser.ExpressionChildContext;
+import se.kth.mal.sLangParser.ExpressionStepContext;
+import se.kth.mal.sLangParser.ImmediateContext;
+import se.kth.mal.sLangParser.NormalContext;
+import se.kth.mal.sLangParser.SelectContext;
+import se.kth.mal.sLangParser.SetOperatorContext;
+import se.kth.mal.steps.Connection;
+import se.kth.mal.steps.SelectConnection;
+import se.kth.mal.steps.Step;
 
 public class SecuriLangListener extends sLangBaseListener {
-
-   String           path;
-   List<AttackStep> containerSteps      = new ArrayList<>();
-   CompilerModel    model;
-   Asset            currentAsset;
-   String           currentCategoryName = "NoCategoryName";
+   CompilerModel model;
+   String        category;
+   Asset         asset;
+   AttackStep    attackStep;
 
    public SecuriLangListener(CompilerModel model) {
       this.model = model;
    }
 
    @Override
+   public void enterCategoryDeclaration(CategoryDeclarationContext ctx) {
+      category = ctx.Identifier().getText();
+   }
+
+   @Override
+   public void exitCategoryDeclaration(CategoryDeclarationContext ctx) {
+      category = "";
+   }
+
+   @Override
    public void enterAssetDeclaration(sLangParser.AssetDeclarationContext ctx) {
-      boolean abstractAsset = ctx.getText().startsWith("abstract");
       System.out.println("asset = " + ctx.Identifier(0).getText());
+      boolean abstractAsset = ctx.getText().startsWith("abstract");
       if (ctx.Identifier().size() == 1) {
-         currentAsset = model.addAsset(ctx.Identifier(0).getText(), "", abstractAsset);
+         asset = model.addAsset(ctx.Identifier(0).getText(), "", abstractAsset);
       }
       else {
-         currentAsset = model.addAsset(ctx.Identifier(0).getText(), ctx.Identifier(1).getText(), abstractAsset);
+         asset = model.addAsset(ctx.Identifier(0).getText(), ctx.Identifier(1).getText(), abstractAsset);
       }
       if (ctx.description() != null) {
-         currentAsset.setInfo(ctx.description().StringLiteral().getText().replaceAll("\"", ""));
+         asset.setInfo(ctx.description().StringLiteral().getText().replaceAll("\"", ""));
       }
       if (ctx.rationale() != null) {
-         currentAsset.setRationale(ctx.rationale().StringLiteral().getText().replaceAll("\"", ""));
+         asset.setRationale(ctx.rationale().StringLiteral().getText().replaceAll("\"", ""));
       }
-      ParserRuleContext parent = ctx.getParent();
-      if (parent != null && parent instanceof sLangParser.CategoryDeclarationContext) {
-         sLangParser.CategoryDeclarationContext categoryCtx = (sLangParser.CategoryDeclarationContext) parent;
-         currentAsset.category = categoryCtx.Identifier().getText();
-      }
-      else {
-         currentAsset.category = currentCategoryName;
-      }
+      asset.category = category;
    }
 
    @Override
@@ -54,16 +60,7 @@ public class SecuriLangListener extends sLangBaseListener {
 
    @Override
    public void enterAttackStepDeclaration(sLangParser.AttackStepDeclarationContext ctx) {
-      AttackStep attackStep;
-      attackStep = currentAsset.addAttackStep(true, ctx.attackStepType().getText(), ctx.Identifier().getText());
-      if (!(ctx.children() == null)) {
-         List<AttackStepPointer> childPointers = getChildPointers(ctx.children());
-         attackStep.childPointers = childPointers;
-      }
-      if (containerSteps.size() > 0) {
-         attackStep.containerStep = containerSteps.get(containerSteps.size() - 1);
-      }
-      containerSteps.add(attackStep);
+      attackStep = asset.addAttackStep(true, ctx.attackStepType().getText(), ctx.Identifier().getText());
 
       if (ctx.ttc() != null) {
          attackStep.ttcFunction = ctx.ttc().Identifier().getText();
@@ -85,21 +82,12 @@ public class SecuriLangListener extends sLangBaseListener {
 
    @Override
    public void enterExistenceStepDeclaration(sLangParser.ExistenceStepDeclarationContext ctx) {
-      AttackStep attackStep;
-      attackStep = currentAsset.addAttackStep(true, ctx.existenceStepType().getText(), ctx.Identifier().getText());
+      attackStep = asset.addAttackStep(true, ctx.existenceStepType().getText(), ctx.Identifier().getText());
       if (!(ctx.existenceRequirements() == null)) {
          for (TerminalNode existenceRequirement : ctx.existenceRequirements().Identifier()) {
             attackStep.existenceRequirementRoles.add(existenceRequirement.getText());
          }
       }
-      if (!(ctx.children() == null)) {
-         List<AttackStepPointer> childPointers = getChildPointers(ctx.children());
-         attackStep.childPointers = childPointers;
-      }
-      if (containerSteps.size() > 0) {
-         attackStep.containerStep = containerSteps.get(containerSteps.size() - 1);
-      }
-      containerSteps.add(attackStep);
 
       if (ctx.ttc() != null) {
          attackStep.ttcFunction = ctx.ttc().Identifier().getText();
@@ -117,28 +105,60 @@ public class SecuriLangListener extends sLangBaseListener {
    }
 
    @Override
-   public void exitAttackStepDeclaration(sLangParser.AttackStepDeclarationContext ctx) {
-      containerSteps.remove(containerSteps.size() - 1);
+   public void enterImmediate(ImmediateContext ctx) {
+      // Immediate step of form '-> compromise'
+      Step step = new Step(asset.name, attackStep.name, ctx.Identifier().getText());
+      attackStep.steps.add(step);
    }
 
-   protected List<AttackStepPointer> getChildPointers(sLangParser.ChildrenContext ctx) {
-      List<AttackStepPointer> childPointers = new ArrayList<>();
-      for (sLangParser.ExpressionNameContext enc : ctx.expressionName()) {
-         AttackStepPointer pointer = currentAsset.addStepPointer();
-         pointer.roleName = enc.Identifier().getText();
-
-         // Traversing backwards
-         AmbiguousNameContext anc = enc.ambiguousName();
-         while (anc != null) {
-            AttackStepPointer ptr = currentAsset.addStepPointer();
-            ptr.attackStepPointer = pointer;
-            pointer = ptr;
-            pointer.roleName = anc.Identifier().getText();
-            anc = anc.ambiguousName();
+   @Override
+   public void enterNormal(NormalContext ctx) {
+      // Normal step with any amount of steps, may or may not have specified
+      // type.
+      Step step = new Step(asset.name, attackStep.name, ctx.Identifier().getText());
+      for (ExpressionStepContext esc : ctx.expressionStep()) {
+         String cast = (esc.Identifier().size() > 1 ? esc.Identifier(1).getText() : "");
+         Connection connection = new Connection(esc.Identifier(0).getText(), cast);
+         if (step.connections.isEmpty()) {
+            connection.previousAsset = asset.name;
          }
-
-         childPointers.add(pointer);
+         step.connections.add(connection);
       }
-      return childPointers;
+      attackStep.steps.add(step);
+   }
+
+   @Override
+   public void enterSelect(SelectContext ctx) {
+      // Select step, may have any amount of intermediate steps. Select step may
+      // also have type, followed by any amount of normal steps.
+      String attack = (ctx.Identifier().size() > 1 ? ctx.Identifier(1).getText() : ctx.Identifier(0).getText());
+      String cast = (ctx.Identifier().size() > 1 ? ctx.Identifier(0).getText() : "");
+      Step step = new Step(asset.name, attackStep.name, attack);
+      SelectConnection select = new SelectConnection();
+      select.previousAsset = asset.name;
+      select.cast = cast;
+      for (ExpressionChildContext ecc : ctx.expressionChild()) {
+         Step childStep = new Step(asset.name, attackStep.name, "");
+         for (ExpressionStepContext esc : ecc.expressionStep()) {
+            String _cast = (esc.Identifier().size() > 1 ? esc.Identifier(1).getText() : "");
+            Connection connection = new Connection(esc.Identifier(0).getText(), _cast);
+            if (step.connections.isEmpty()) {
+               connection.previousAsset = asset.name;
+            }
+            childStep.connections.add(connection);
+         }
+         select.steps.add(childStep);
+      }
+      for (SetOperatorContext soc : ctx.setOperator()) {
+         select.operators.add(soc.getText());
+      }
+      step.connections.add(select);
+
+      for (ExpressionStepContext esc : ctx.expressionStep()) {
+         String _cast = (esc.Identifier().size() > 1 ? esc.Identifier(1).getText() : "");
+         Connection connection = new Connection(esc.Identifier(0).getText(), _cast);
+         step.connections.add(connection);
+      }
+      attackStep.steps.add(step);
    }
 }

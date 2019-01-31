@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import se.kth.mal.steps.Step;
+
 // After changing sLang.g4, in bash, in
 // /Users/pontus/Documents/Pontus\ Program\ Files/Eclipse/securiLangDSL2d3js/src, run
 // "antlr4 sLang.g4"
@@ -117,20 +119,15 @@ public class CompilerWriter {
                      }
                   }
                   AttackStep superAttackStep = attackStep.getSuper();
-                  if (attackStep.childPointers.size() > 0 || superAttackStep != null) {
-                     writeToJsonStringln("     \"targets\": [");
-                     for (AttackStepPointer childPointer : attackStep.childPointers) {
-                        AttackStepPointer ptr = childPointer;
-                        while (ptr.getAttackStep() == null) {
-                           ptr = ptr.getAttackStepPointer();
-                        }
-                        writeToJsonStringln(String.format("{\"name\": \"%s\", \"entity_name\": \"%s\", \"size\": 4000},", ptr.getAttackStep().getName(), ptr.getAsset().getName()));
+                  if (!attackStep.steps.isEmpty() || superAttackStep != null) {
+                     writeToJsonStringln("\"targets\": [");
+                     for (Step step : attackStep.steps) {
+                        writeToJsonStringln(String.format("{\"name\": \"%s\", \"entity_name\": \"%s\", \"size\": 4000}", step.to, step.getTargetAsset()));
                      }
                      if (superAttackStep != null) {
-                        writeToJsonStringln("      {\"name\": \"" + superAttackStep.name + "\", \"entity_name\": \"" + superAttackStep.asset.name + "\", \"size\": 4000},");
+                        writeToJsonStringln(String.format("{\"name\": \"%s\", \"entity_name\": \"%s\", \"size\": 4000}", superAttackStep.name, superAttackStep.asset.name));
                      }
-                     backtrackJsonString();
-                     writeToJsonStringln("     ],");
+                     writeToJsonStringln("],");
                   }
                   backtrackJsonString();
                   writeToJsonStringln("    },");
@@ -200,7 +197,7 @@ public class CompilerWriter {
    }
 
    void printImports() {
-      String imports = "import core.AnySet;\nimport java.util.ArrayList;\nimport java.util.HashSet;\nimport java.util.List;\nimport java.util.Set;\nimport static org.junit.Assert.assertTrue;\n\nimport core.Asset;\nimport core.AttackStep;\nimport core.AttackStepMax;\nimport core.AttackStepMin;\nimport core.Defense;";
+      String imports = "import java.util.ArrayList;\nimport java.util.HashSet;\nimport java.util.List;\nimport java.util.Set;\nimport static org.junit.Assert.assertTrue;\n\nimport core.Asset;\nimport core.AttackStep;\nimport core.AttackStepMax;\nimport core.AttackStepMin;\nimport core.Defense;";
       writer.println(imports);
    }
 
@@ -218,7 +215,7 @@ public class CompilerWriter {
    void printAssociations(Asset asset) {
       for (Association association : model.getAssociations(asset)) {
          if (association.rightMultiplicity.equals("*") || association.rightMultiplicity.equals("1-*")) {
-            writer.println("   public AnySet<" + association.rightAssetName + "> " + association.rightRoleName + " = new AnySet<>();");
+            writer.println("   public Set<" + association.rightAssetName + "> " + association.rightRoleName + " = new HashSet<>();");
          }
          else {
             if (association.rightMultiplicity.equals("1") || association.rightMultiplicity.equals("0-1")) {
@@ -481,85 +478,37 @@ public class CompilerWriter {
       writer.println("   }\n");
    }
 
-   void printPointer(String prefix, AttackStepPointer pointer) {
-      if (pointer.getAttackStep() != null) {
-         // We are at the final step
-         if (prefix.isEmpty()) {
-            // We are also at the first step, self referencing
-            writer.println(String.format("if (%s != null) {//selfref", pointer.getAttackStep().getName()));
-            writer.println(String.format("%s.updateTtc(this, ttc, activeAttackSteps);", pointer.getAttackStep().getName()));
-            writer.println("}");
-         }
-         else {
-            writer.println(String.format("%s%s.updateTtc(this, ttc, activeAttackSteps);", prefix, pointer.getAttackStep().getName()));
-         }
-      }
-      else if (pointer.getMultiplicity().equals("0-1") || pointer.getMultiplicity().equals("1")) {
-         writer.println(String.format("if (%s%s != null) {", prefix, pointer.getRoleName()));
-         printPointer(String.format("%s%s.", prefix, pointer.getRoleName()), pointer.getAttackStepPointer());
-         writer.println("}");
-      }
-      else {
-         writer.println(String.format("for (%s %s : %s%s) {", pointer.getAsset().getName(), pointer.getAsset().getDecapitalizedName(), prefix, pointer.getRoleName()));
-         printPointer(String.format("%s.", pointer.getAsset().getDecapitalizedName()), pointer.getAttackStepPointer());
-         writer.println("}");
-      }
-   }
-
    void printUpdateChildren(AttackStep attackStep) {
-      if (!attackStep.childPointers.isEmpty()) {
+      if (!attackStep.steps.isEmpty()) {
          writer.println("@Override");
          writer.println("public void updateChildren(Set<AttackStep> activeAttackSteps) {");
-         for (AttackStepPointer childPointer : attackStep.childPointers) {
-            printPointer("", childPointer);
+         for (Step step : attackStep.steps) {
+            step.print(writer, "%s.updateTtc(this, ttc, activeAttackSteps);\n");
          }
-         writer.println("}");
-      }
-   }
-
-   void printParentPointer(String prefix, AttackStepPointer pointer) {
-      if (pointer.getAttackStep() != null) {
-         // We are at the final step
-         String suffix = pointer.getAttackStep().isDefense() ? ".disable" : "";
-         if (prefix.isEmpty()) {
-            // We are also at the first step, self referencing
-            writer.println(String.format("if (%s != null) {//selfref", pointer.getAttackStep().getName()));
-            writer.println(String.format("addExpectedParent(%s%s);", pointer.getAttackStep().getName(), suffix));
-            writer.println("}");
-         }
-         else {
-            prefix = prefix.substring(0, prefix.length() - 1);
-            writer.println(String.format("if (%s instanceof %s) {", prefix, pointer.getAttackStep().getAsset().getName()));
-            writer.println(String.format("addExpectedParent(((%s)%s).%s%s);", pointer.getAttackStep().getAsset().getName(), prefix, pointer.getAttackStep().getName(), suffix));
-            writer.println("}");
-         }
-      }
-      else if (pointer.getMultiplicity().equals("0-1") || pointer.getMultiplicity().equals("1")) {
-         writer.println(String.format("if (%s%s != null) {", prefix, pointer.getRoleName()));
-         printParentPointer(String.format("%s%s.", prefix, pointer.getRoleName()), pointer.getAttackStepPointer());
-         writer.println("}");
-      }
-      else {
-         writer.println(String.format("for (%s %s : %s%s) {", pointer.getAsset().getName(), pointer.getAsset().getDecapitalizedName(), prefix, pointer.getRoleName()));
-         printParentPointer(String.format("%s.", pointer.getAsset().getDecapitalizedName()), pointer.getAttackStepPointer());
          writer.println("}");
       }
    }
 
    void printSetExpectedParents(AttackStep attackStep) {
-      if (!attackStep.getParentPointers().isEmpty()) {
+      if (!attackStep.parentSteps.isEmpty()) {
          writer.println("@Override");
-         writer.println("protected void setExpectedParents() {");
-         // When an attack step is overridden, the inheriting parents must still
-         // be able to reach it as specified in the super class.
+         writer.println("public void setExpectedParents() {");
          if (!attackStep.getSuperAttackStepName().isEmpty()) {
             writer.println("super.setExpectedParents();");
          }
-         if (attackStep.getExistenceRequirementRoles().size() > 0) {
+         if (!attackStep.getExistenceRequirementRoles().isEmpty()) {
             writer.println(String.format("if (%s != null) {", attackStep.getExistenceRequirementRoles().get(0)));
          }
-         for (AttackStepPointer parentPointer : attackStep.parentPointers) {
-            printParentPointer("", parentPointer);
+         for (Step step : attackStep.parentSteps) {
+            if (model.getAsset(step.getTargetAsset()).getAttackStep(step.to).isDefense()) {
+               step.print(writer, "addExpectedParent(%s.disable);\n");
+            }
+            else {
+               step.print(writer, "addExpectedParent(%s);\n");
+            }
+         }
+         if (!attackStep.getExistenceRequirementRoles().isEmpty()) {
+            writer.println("}");
          }
          writer.println("}");
       }
@@ -642,7 +591,7 @@ public class CompilerWriter {
    void printGetAssociatedAssets(Asset asset) {
       writer.println("   @Override");
       writer.println("   public Set<Asset> getAssociatedAssets(String roleName) {");
-      writer.println("      AnySet<Asset> assets = new AnySet<>();");
+      writer.println("      Set<Asset> assets = new HashSet<>();");
       for (Association association : asset.getAssociationsIncludingInherited()) {
          writer.println(
                "      if (roleName.equals(\"" + association.getTargetRoleNameIncludingInheritance(asset) + "\")  && " + association.getTargetRoleNameIncludingInheritance(asset) + " != null) {");
@@ -663,7 +612,7 @@ public class CompilerWriter {
    void printGetAllAssociatedAssets(Asset asset) {
       writer.println("   @Override");
       writer.println("   public Set<Asset> getAllAssociatedAssets() {");
-      writer.println("      AnySet<Asset> assets = new AnySet<>();");
+      writer.println("      Set<Asset> assets = new HashSet<>();");
       for (Association association : asset.getAssociationsIncludingInherited()) {
          if (association.targetMultiplicityIncludingInheritance(asset).equals("*") || association.targetMultiplicityIncludingInheritance(asset).equals("1-*")) {
             writer.println("      assets.addAll(" + association.getTargetRoleNameIncludingInheritance(asset) + ");");

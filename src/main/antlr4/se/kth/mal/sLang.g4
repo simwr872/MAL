@@ -80,7 +80,7 @@ existenceRequirements
 
 // List the children.
 children 
-	:	childOperator expressionName (',' expressionName)*
+	:	childOperator expression (',' expression)*
 	;
 
 // -> indicates that the generalization attack step definition is replaced by the specialization, while +> denotes the specialization is appended
@@ -147,19 +147,28 @@ attackStepType
 	|	'#'
 	|	't'
 	;
-	
-expressionName
-	:	Identifier
-	|	ambiguousName '.' Identifier
-	;
 
-ambiguousName
-	:	Identifier
-	|	ambiguousName '.' Identifier
-	;
+expression
+    :   Identifier #immediate
+    |   (expressionStep '.' )+ Identifier #normal
+    |  '(' expressionChild (setOperator expressionChild)+ ')' ('[' Identifier ']')? ('.' expressionStep)* '.' Identifier #select
+    ;
+
+expressionStep
+    :   Identifier ('[' Identifier ']')?
+    ;
+
+expressionChild
+    :   expressionStep ('.' expressionStep)*
+    ;
+    
+setOperator
+    :   '/\\'
+    |   '\\/'
+    ;
 
 Identifier
-	:	JavaLetter JavaLetterOrDigit*
+    :   JavaLetter JavaLetterOrDigit*
 	;
 
 formalParameters

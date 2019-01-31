@@ -9,7 +9,7 @@ import java.util.Set;
 
 public class Asset {
    CompilerModel    model;
-   String           name;
+   public String    name;
    String           info;
    String           rationale;
    String           category                    = "NoCategoryName";
@@ -192,10 +192,6 @@ public class Asset {
       return as;
    }
 
-   public AttackStepPointer addStepPointer() {
-      return new AttackStepPointer();
-   }
-
    public List<Association> getAssociations() {
       List<Association> assetAssociations = new ArrayList<>();
       for (Association a : model.getAssociations()) {
@@ -266,7 +262,7 @@ public class Asset {
             return attackStep;
          }
       }
-      return null;
+      throw new Error(String.format("No attack step named '%s' in asset '%s'", name, this.name));
    }
 
    public int nAssociationsAndPublicAttackSteps() {

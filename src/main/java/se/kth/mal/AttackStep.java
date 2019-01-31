@@ -5,30 +5,32 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AttackStep {
-   boolean                        isSpecialization;
-   String                         superAttackStepName       = "";
-   Boolean                        hasSpecialization         = false;
-   Asset                          asset;
-   AttackStep                     containerStep;
-   Boolean                        mostImportant             = false;
-   Boolean                        visibility;
-   String                         attackStepType;
-   String                         name;
-   String                         description;
-   String                         rationale;
-   String                         ttcFunction               = "Default";
-   List<Float>                    ttcParameters             = new ArrayList<>();
-   public List<AttackStepPointer> childPointers             = new ArrayList<>();
-   List<AttackStepPointer>        parentPointers            = new ArrayList<>();
-   List<String>                   existenceRequirementRoles = new ArrayList<>();
-   CompilerModel                  model;
+import se.kth.mal.steps.Step;
 
-   public static final String     DEFENSE_TYPE              = "#";
-   public static final String     DEFENSE_E_TYPE            = "E";
-   public static final String     DEFENSE_3_TYPE            = "3";
-   public static final String     ATTACKSTEP_AND_TYPE       = "&";
-   public static final String     ATTACKSTEP_OR_TYPE        = "|";
+public class AttackStep {
+   public List<Step>          steps                     = new ArrayList<>();
+   public List<Step>          parentSteps               = new ArrayList<>();
+   boolean                    isSpecialization;
+   String                     superAttackStepName       = "";
+   Boolean                    hasSpecialization         = false;
+   Asset                      asset;
+   AttackStep                 containerStep;
+   Boolean                    mostImportant             = false;
+   Boolean                    visibility;
+   String                     attackStepType;
+   String                     name;
+   String                     description;
+   String                     rationale;
+   String                     ttcFunction               = "Default";
+   List<Float>                ttcParameters             = new ArrayList<>();
+   List<String>               existenceRequirementRoles = new ArrayList<>();
+   CompilerModel              model;
+
+   public static final String DEFENSE_TYPE              = "#";
+   public static final String DEFENSE_E_TYPE            = "E";
+   public static final String DEFENSE_3_TYPE            = "3";
+   public static final String ATTACKSTEP_AND_TYPE       = "&";
+   public static final String ATTACKSTEP_OR_TYPE        = "|";
 
    public AttackStep(CompilerModel model, Asset asset, Boolean visibility, String attackStepType, String name) {
       this.asset = asset;
@@ -40,20 +42,6 @@ public class AttackStep {
 
    public String fullDefaultName() {
       return asset.defaultInstanceName() + "." + name;
-   }
-
-   public List<AttackStepPointer> inheritedChildPointers() {
-      List<AttackStepPointer> inheritedChildPointers = new ArrayList<>();
-      if (!asset.superAssetName.equals("")) {
-         if (!superAttackStepName.equals("")) {
-            String theSuperAttackStepName = CompilerModel.decapitalize(superAttackStepName.substring(superAttackStepName.lastIndexOf('.') + 1));
-            Asset superAsset = model.getAsset(asset.superAssetName);
-            AttackStep superAttackStep = superAsset.getAttackStep(theSuperAttackStepName);
-            inheritedChildPointers.addAll(superAttackStep.childPointers);
-            inheritedChildPointers.addAll(superAttackStep.inheritedChildPointers());
-         }
-      }
-      return inheritedChildPointers;
    }
 
    public boolean isHiddenAttackStep() {
@@ -175,14 +163,6 @@ public class AttackStep {
       return ttcParameters;
    }
 
-   public List<AttackStepPointer> getChildPointers() {
-      return childPointers;
-   }
-
-   public List<AttackStepPointer> getParentPointers() {
-      return parentPointers;
-   }
-
    public List<String> getExistenceRequirementRoles() {
       return existenceRequirementRoles;
    }
@@ -192,7 +172,7 @@ public class AttackStep {
    }
 
    public void setRationale(String rationale) {
-	  this.rationale = rationale;
+      this.rationale = rationale;
    }
 
    public String getRationale() {

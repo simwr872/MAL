@@ -1,7 +1,5 @@
 package se.kth.mal;
 
-import static org.junit.Assert.assertNotNull;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileInputStream;
@@ -20,6 +18,10 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
+
+import se.kth.mal.steps.Connection;
+import se.kth.mal.steps.SelectConnection;
+import se.kth.mal.steps.Step;
 
 public class CompilerModel {
 
@@ -120,17 +122,13 @@ public class CompilerModel {
       return a;
    }
 
-   public AttackStepPointer addStepPointer() {
-      return new AttackStepPointer();
-   }
-
    public Asset getAsset(String name) {
       for (Asset asset : this.assets) {
          if (asset.name.equals(name)) {
             return asset;
          }
       }
-      return null;
+      throw new Error(String.format("No asset named '%s'", name));
    }
 
    public List<Association> getAssociations(Asset asset) {
@@ -168,14 +166,13 @@ public class CompilerModel {
       }
       // Does the association exist for the super asset of leftAsset?
       Asset leftAsset = getAsset(leftAssetName);
-      if (!leftAsset.superAssetName.equals("")) {
-         Association association = getConnectedAssociation(leftAsset.superAssetName, rightRoleName);
-         if (association != null) {
-            return association;
-         }
+      if (!leftAsset.superAssetName.isEmpty()) {
+         System.out.println(String.format("No association from asset '%s' to field [%s]", leftAssetName, rightRoleName));
+         System.out.println(String.format("  Checking extended parent '%s' to field [%s]", leftAsset.superAssetName, rightRoleName));
+         return getConnectedAssociation(leftAsset.superAssetName, rightRoleName);
       }
 
-      return null;
+      throw new Error(String.format("No association from asset '%s' to field [%s]", leftAssetName, rightRoleName));
    }
 
    public String getConnectedAssetName(String leftAssetName, String rightRoleName) {
@@ -211,12 +208,38 @@ public class CompilerModel {
       }
    }
 
-   // SecuriLangListener reads strings from the .slang file into Model
-   // variables, but because the model is not yet complete, they cannot always
-   // be written to the proper place (for instance, children classes may not yet
-   // have been created when the first reference is encountered). Therefore,
-   // Model.update() makes a second pass through the model to place all
-   // information in the right place.
+   /**
+    * Updates all connections of a step with their associations.
+    *
+    * @param step
+    *           Step to be updated.
+    */
+   void updateStep(Step step) {
+      for (Connection connection : step.connections) {
+         if (connection instanceof SelectConnection) {
+            for (Step childStep : ((SelectConnection) connection).steps) {
+               updateStep(childStep);
+            }
+            String targetAsset = ((SelectConnection) connection).steps.get(0).getTargetAsset();
+            for (int i = 1; i < ((SelectConnection) connection).steps.size(); i++) {
+               String target = ((SelectConnection) connection).steps.get(i).getTargetAsset();
+               if (!target.equals(targetAsset)) {
+                  throw new Error(String.format("Different set type on index %d; %s =/= %s", i, targetAsset, target));
+               }
+            }
+            ((SelectConnection) connection).update();
+         }
+         else {
+            Association association = getConnectedAssociation(connection.previousAsset, connection.field);
+            boolean previousAssetLeft = isLeftAsset(association, connection.previousAsset);
+            connection.associationUpdate(association, previousAssetLeft);
+         }
+         int nextIndex = step.connections.indexOf(connection) + 1;
+         if (nextIndex < step.connections.size()) {
+            step.connections.get(nextIndex).previousAsset = connection.getCastedAsset();
+         }
+      }
+   }
 
    public void update() {
       for (Asset asset : assets) {
@@ -231,50 +254,10 @@ public class CompilerModel {
       for (Asset asset : assets) {
          for (AttackStep attackStep : asset.attackSteps) {
             System.out.println(String.format("Iterating children inside %s$%s", asset.name, attackStep.name));
-            for (AttackStepPointer attackStepPointer : attackStep.childPointers) {
-
-               String assetName = asset.name;
-               AttackStepPointer pointer = attackStepPointer;
-               AttackStepPointer parent = addStepPointer();
-               parent.attackStep = attackStep;
-               while (pointer.attackStepPointer != null) {
-                  AttackStepPointer newParent = addStepPointer();
-                  newParent.attackStepPointer = parent;
-                  parent = newParent;
-
-                  pointer.association = getConnectedAssociation(assetName, pointer.roleName);
-                  parent.association = pointer.association;
-                  assertNotNull("null", pointer.association);
-                  System.out.println(String.format("    Association %s found", pointer.association.getName()));
-
-                  if (isLeftAsset(pointer.association, assetName)) {
-                     // Previous asset is on the left side of assoc
-                     assetName = pointer.association.getRightAssetName();
-                     pointer.multiplicity = pointer.association.rightMultiplicity;
-
-                     parent.multiplicity = pointer.association.leftMultiplicity;
-                     parent.asset = getAsset(pointer.association.getLeftAssetName());
-                     parent.roleName = pointer.association.getLeftRoleName();
-                  }
-                  else {
-                     assetName = pointer.association.getLeftAssetName();
-                     pointer.multiplicity = pointer.association.leftMultiplicity;
-
-                     parent.multiplicity = pointer.association.rightMultiplicity;
-                     parent.asset = getAsset(pointer.association.getRightAssetName());
-                     parent.roleName = pointer.association.getRightRoleName();
-                  }
-                  pointer.asset = getAsset(assetName);
-                  System.out.println(String.format("    Multiplicity: %s", pointer.multiplicity));
-
-                  pointer = pointer.attackStepPointer;
-               }
-               // Iteration through pointers are complete and we should now be
-               // on the pointer with the attackStep rolename
-               pointer.asset = getAsset(assetName);
-               pointer.attackStep = pointer.asset.getAttackStep(pointer.roleName);
-
-               pointer.attackStep.parentPointers.add(parent);
+            for (Step step : attackStep.steps) {
+               updateStep(step);
+               Step parent = step.reverse(step.getTargetAsset());
+               getAsset(step.getTargetAsset()).getAttackStep(step.to).parentSteps.add(parent);
             }
          }
       }
