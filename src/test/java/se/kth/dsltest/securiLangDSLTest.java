@@ -14,7 +14,7 @@ public class securiLangDSLTest {
    public void test() {
 
       try {
-         new Master("./src/test/resources/securiLang.slng", tmpFolder.newFolder("java").getPath(), "auto", false, null);
+         new Master("./src/test/resources/securiLang.slng", tmpFolder.newFolder("java").getPath(), "auto", false, null, null);
       }
       catch (
 

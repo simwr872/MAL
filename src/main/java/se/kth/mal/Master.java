@@ -14,7 +14,7 @@ import com.foreseeti.generator.SecuriCADCodeGenerator;
 
 public class Master {
 
-   public Master(String inputPath, String outputPath, String packageName, boolean foreseeti, String iconPath) {
+   public Master(String inputPath, String outputPath, String packageName, boolean foreseeti, String iconPath, String configPath) {
       File input = new File(inputPath);
       if (!input.exists() || !input.isFile()) {
          System.err.printf("Invalid input file '%s'\n", input.getAbsolutePath());
@@ -39,7 +39,15 @@ public class Master {
                System.exit(1);
             }
          }
-         new SecuriCADCodeGenerator(input, output, packageName, icon);
+         File config = null;
+         if (configPath != null) {
+            config = new File(configPath);
+            if (!config.exists() || !config.isFile()) {
+               System.err.printf("Invalid config path '%s'\n", config.getAbsolutePath());
+               System.exit(1);
+            }
+         }
+         new SecuriCADCodeGenerator(input, output, packageName, icon, config);
       }
       else {
          new CompilerWriter(input, output, packageName);
@@ -73,13 +81,18 @@ public class Master {
       foreseeti.setRequired(false);
       options.addOption(foreseeti);
 
+      Option meta = new Option("c", "config", true, "metadata config file");
+      meta.setRequired(false);
+      options.addOption(meta);
+
       CommandLineParser parser = new DefaultParser();
       HelpFormatter formatter = new HelpFormatter();
       CommandLine cmd = null;
 
       try {
          cmd = parser.parse(options, args);
-         new Master(cmd.getOptionValue("input").trim(), cmd.getOptionValue("output").trim(), cmd.getOptionValue("package").trim(), cmd.hasOption("foreseeti"), cmd.getOptionValue("visual"));
+         new Master(cmd.getOptionValue("input").trim(), cmd.getOptionValue("output").trim(), cmd.getOptionValue("package").trim(), cmd.hasOption("foreseeti"), cmd.getOptionValue("visual"),
+               cmd.getOptionValue("config"));
       }
       catch (ParseException e) {
          System.err.println(e.getMessage());

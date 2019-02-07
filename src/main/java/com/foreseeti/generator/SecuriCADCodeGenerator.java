@@ -11,7 +11,9 @@ import static org.junit.Assert.assertTrue;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
@@ -19,6 +21,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.batik.transcoder.TranscoderException;
 import org.apache.batik.transcoder.TranscoderInput;
@@ -43,6 +46,7 @@ public class SecuriCADCodeGenerator {
    protected String        packageName;
    protected String        javaFolder;
    protected File          visualFolder = null;
+   protected Properties    properties;
 
    protected Integer       associationIndex;
 
@@ -54,10 +58,24 @@ public class SecuriCADCodeGenerator {
       return packageName.replace('.', File.separatorChar);
    }
 
-   public SecuriCADCodeGenerator(File input, File output, String packageName, File iconPath) {
+   public SecuriCADCodeGenerator(File input, File output, String packageName, File iconPath, File configPath) {
       this.visualFolder = iconPath;
       String packagePath = package2path(packageName);
       this.model = new CompilerModel(input);
+
+      if (configPath != null) {
+         this.properties = new Properties();
+         try {
+            this.properties.load(new FileInputStream(configPath));
+         }
+         catch (IOException e) {
+            e.printStackTrace();
+         }
+      }
+      else {
+         generateConfigTemplate(output);
+      }
+
       try {
          writeJava(output.getAbsolutePath(), packageName, packagePath);
       }
@@ -108,6 +126,59 @@ public class SecuriCADCodeGenerator {
             throw new IllegalArgumentException("Bad visualization folder path");
          }
       }
+   }
+
+   private void generateConfigTemplate(File output) {
+      FileWriter fw;
+      try {
+         fw = new FileWriter(new File(output, "template_config.cfg"));
+         fw.write("# Keys are asset names followed by the attackstep. Values are comma separated,\n");
+         fw.write("# the first being if the step affects coloring, second being what value gets\n");
+         fw.write("# contributed to.\n");
+         fw.write("#\n");
+         fw.write("# Host.compromise = (true|false)[,(confidentiality|integrity|availability)]\n");
+         fw.write("#\n");
+         fw.write("# For example, reaching a host contributes to coloring and the integrity value.\n");
+         fw.write("# Host.compromise = true,integrity\n");
+         fw.write("\n");
+         for (Asset asset : model.getAssets()) {
+            for (AttackStep step : asset.getAttackSteps()) {
+               fw.write(String.format("%s.%s = false\n", asset.getName(), step.getName()));
+            }
+         }
+         fw.close();
+      }
+      catch (IOException e) {
+         e.printStackTrace();
+      }
+
+   }
+
+   private String[] getProperty(String asset, String step) {
+      if (this.properties == null) {
+         return null;
+      }
+      String property = this.properties.getProperty(String.format("%s.%s", asset, step));
+      if (property == null) {
+         return null;
+      }
+      return property.trim().split(",");
+   }
+
+   private boolean getColor(String asset, String step) {
+      String[] property = getProperty(asset, step);
+      if (property == null) {
+         return false;
+      }
+      return Boolean.parseBoolean(property[0]);
+   }
+
+   private String getContribution(String asset, String step) {
+      String[] property = getProperty(asset, step);
+      if (property == null) {
+         return "";
+      }
+      return (property.length < 2 ? "" : property[1]);
    }
 
    private String capitalize(final String line) {
@@ -258,9 +329,9 @@ public class SecuriCADCodeGenerator {
             + "import com.foreseeti.simulator.Defense;\n" + "import com.foreseeti.simulator.AttackStep;\n" + "import com.google.common.collect.ImmutableSet;\n"
             + "import com.foreseeti.simulator.MultiParentAsset;\n" + "import com.foreseeti.simulator.BaseLangLink;\n" + "import com.foreseeti.corelib.AssociationManager;\n"
             + "import com.foreseeti.corelib.util.FProbSet;\n" + "import com.foreseeti.corelib.util.FProb;\n" + "import com.foreseeti.corelib.FAnnotations.*;\n" + "import java.util.ArrayList;\n"
-            + "import java.util.HashSet;\n" + "import java.util.List;\n" + "import java.util.Set;\n" + "import com.foreseeti.corelib.BaseSample;\n" + "import static org.junit.Assert.assertTrue;\n"
-            + "import com.foreseeti.simulator.Asset;\n" + "import com.foreseeti.simulator.AttackStep;\n" + "import com.foreseeti.simulator.AttackStepMax;\n"
-            + "import com.foreseeti.simulator.AttackStepMin;\n" + "import com.foreseeti.simulator.Defense;";
+            + "import java.util.HashSet;\n" + "import java.util.List;\n" + "import java.util.Set;\n" + "import com.foreseeti.corelib.BaseSample;\n" + "import com.foreseeti.simulator.Asset;\n"
+            + "import com.foreseeti.simulator.AttackStep;\n" + "import com.foreseeti.simulator.AttackStepMax;\n" + "import com.foreseeti.simulator.AttackStepMin;\n"
+            + "import com.foreseeti.simulator.Defense;";
       writer.println(imports);
    }
 
@@ -671,6 +742,22 @@ public class SecuriCADCodeGenerator {
 
    void printStepDefinitions(Asset asset) {
       for (AttackStep attackStep : asset.getAttackSteps()) {
+         if (getColor(asset.getName(), attackStep.getName())) {
+            writer.println("@Color");
+         }
+         switch (getContribution(asset.getName(), attackStep.getName()).toLowerCase()) {
+            case "confidentiality":
+               writer.println("@RiskType(type = Risk.Confidentiality)");
+               break;
+            case "integrity":
+               writer.println("@RiskType(type = Risk.Integrity)");
+               break;
+            case "availability":
+               writer.println("@RiskType(type = Risk.Availability)");
+               break;
+            default:
+               break;
+         }
          if (attackStep.isDefense()) {
             printDefenseDefinition(attackStep, asset);
          }
