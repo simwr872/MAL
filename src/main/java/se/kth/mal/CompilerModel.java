@@ -25,9 +25,10 @@ import se.kth.mal.steps.Step;
 
 public class CompilerModel {
 
-   private List<Asset>              assets       = new ArrayList<>();
-   private List<Association>        associations = new ArrayList<>();
-   private Map<Association, String> links        = new HashMap<>();
+   private List<Asset>              assets        = new ArrayList<>();
+   private List<Association>        associations  = new ArrayList<>();
+   private Map<Association, String> links         = new HashMap<>();
+   private List<String>             includedFiles = new ArrayList<>();
 
    public CompilerModel(String securiLangFolder, String securiLangFile) throws FileNotFoundException, IOException {
 
@@ -86,6 +87,10 @@ public class CompilerModel {
    public void appendFileToBufferedWriter(String securiLangFolder, String securiLangFile, BufferedWriter bufferedWriter) throws java.io.FileNotFoundException, java.io.IOException {
       String line = null;
       String filePath = securiLangFolder + "/" + securiLangFile;
+      if (includedFiles.contains(filePath)) {
+         return;
+      }
+      includedFiles.add(filePath);
 
       FileReader fileReader = new FileReader(filePath);
       BufferedReader bufferedReader = new BufferedReader(fileReader);
