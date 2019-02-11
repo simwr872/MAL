@@ -2,6 +2,8 @@ package se.kth.mal.steps;
 
 import java.io.PrintWriter;
 
+import org.apache.commons.lang.RandomStringUtils;
+
 import se.kth.mal.Association;
 
 /**
@@ -112,13 +114,14 @@ public class Connection {
     */
    public String print(PrintWriter writer, String prefix, String suffix) {
       if (isSet()) {
-         writer.printf("for (%s %s : %s) {\n", asset, decapitalize(asset), prefix + field + suffix);
+         String iterator = decapitalize(asset) + "_" + RandomStringUtils.randomAlphabetic(5);
+         writer.printf("for (%s %s : %s) {\n", asset, iterator, prefix + field + suffix);
          if (!cast.isEmpty()) {
-            writer.printf("if (%s instanceof %s) {\n", decapitalize(asset), cast);
-            prefix = String.format("((%s) %s).", cast, decapitalize(asset));
+            writer.printf("if (%s instanceof %s) {\n", iterator, cast);
+            prefix = String.format("((%s) %s).", cast, iterator);
          }
          else {
-            prefix = decapitalize(asset) + ".";
+            prefix = iterator + ".";
          }
       }
       else {
