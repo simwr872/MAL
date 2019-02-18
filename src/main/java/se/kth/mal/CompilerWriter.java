@@ -495,6 +495,9 @@ public class CompilerWriter {
       if (!attackStep.steps.isEmpty()) {
          writer.println("@Override");
          writer.println("public void updateChildren(Set<AttackStep> activeAttackSteps) {");
+         if (attackStep.isExtension) {
+            writer.println("super.updateChildren(activeAttackSteps);");
+         }
          for (Step step : attackStep.steps) {
             step.print(writer, "%s.updateTtc(this, ttc, activeAttackSteps);\n");
          }

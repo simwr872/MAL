@@ -3,6 +3,7 @@ package se.kth.mal;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import se.kth.mal.sLangParser.CategoryDeclarationContext;
+import se.kth.mal.sLangParser.ChildExtensionContext;
 import se.kth.mal.sLangParser.ExpressionChildContext;
 import se.kth.mal.sLangParser.ExpressionStepContext;
 import se.kth.mal.sLangParser.ImmediateContext;
@@ -56,6 +57,11 @@ public class SecuriLangListener extends sLangBaseListener {
    public void enterAssociationDeclaration(sLangParser.AssociationDeclarationContext ctx) {
       model.addAssociation(ctx.Identifier(0).getText(), ctx.Identifier(1).getText(), ctx.multiplicity(0).getText(), ctx.leftRelation().getText(), ctx.Identifier(2).getText(),
             ctx.rightRelation().getText(), ctx.multiplicity(1).getText(), ctx.Identifier(3).getText(), ctx.Identifier(4).getText());
+   }
+
+   @Override
+   public void enterChildExtension(ChildExtensionContext ctx) {
+      attackStep.isExtension = true;
    }
 
    @Override

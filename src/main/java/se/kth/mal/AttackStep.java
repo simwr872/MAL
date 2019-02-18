@@ -10,6 +10,7 @@ import se.kth.mal.steps.Step;
 public class AttackStep {
    public List<Step>          steps                     = new ArrayList<>();
    public List<Step>          parentSteps               = new ArrayList<>();
+   public boolean             isExtension               = false;
    boolean                    isSpecialization;
    String                     superAttackStepName       = "";
    Boolean                    hasSpecialization         = false;
