@@ -11,6 +11,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,6 +29,8 @@ import java.util.stream.Collectors;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObjectBuilder;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import se.kth.mal.steps.Step;
 
@@ -168,11 +171,38 @@ public class CompilerWriter {
       }
    }
 
+   private void writeCore(String path) {
+      File dst = new File(path);
+      dst.mkdirs();
+
+      ZipInputStream zin = new ZipInputStream(this.getClass().getResourceAsStream("/core.zip"));
+      ZipEntry entry;
+      try {
+         while ((entry = zin.getNextEntry()) != null) {
+            System.out.printf("Writing core/%s\n", entry.getName());
+            byte[] buf = new byte[1024];
+            FileOutputStream fos = new FileOutputStream(path + "/" + entry.getName());
+            int i = -1;
+            while ((i = zin.read(buf)) != -1) {
+               fos.write(buf, 0, i);
+            }
+            fos.close();
+         }
+      }
+      catch (IOException e) {
+         // TODO Auto-generated catch block
+         e.printStackTrace();
+      }
+   }
+
    private void writeJava(String outputFolder, String packageName, String packagePath) {
 
       // Create the path unless it already exists
       String path = outputFolder + "/" + packagePath + "/";
       (new File(path)).mkdirs();
+
+      System.out.println("Writing core");
+      writeCore(outputFolder + "/core");
 
       for (Asset asset : model.getAssets()) {
          System.out.println("Writing the Java class corresponding to asset " + asset.name);
