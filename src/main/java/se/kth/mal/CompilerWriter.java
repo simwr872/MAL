@@ -153,7 +153,7 @@ public class CompilerWriter {
       String ofn = outputFileName.substring(0, outputFileName.lastIndexOf('.'));
       String outputFile = outputFolder + "/" + ofn + ".html";
 
-      InputStream is = this.getClass().getResourceAsStream("/visualization.html");
+      InputStream is = this.getClass().getClassLoader().getResourceAsStream("visualization.html");
       BufferedReader reader = new BufferedReader(new InputStreamReader(is));
       String content = reader.lines().collect(Collectors.joining(System.lineSeparator()));
       content = content.replace("{{NAME}}", ofn).replace("{{JSON}}", d3());
