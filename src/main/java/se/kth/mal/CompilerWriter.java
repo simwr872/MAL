@@ -13,6 +13,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -21,6 +23,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.json.Json;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonObjectBuilder;
 
 import se.kth.mal.steps.Step;
 
@@ -85,6 +92,58 @@ public class CompilerWriter {
       return contents;
    }
 
+   public String d3() {
+      JsonObjectBuilder json = Json.createObjectBuilder();
+      JsonArrayBuilder assets = Json.createArrayBuilder();
+      for (Asset asset : model.getAssets()) {
+         JsonObjectBuilder jsonAsset = Json.createObjectBuilder();
+         jsonAsset.add("name", asset.name);
+         if (!asset.attackSteps.isEmpty()) {
+            JsonArrayBuilder attackSteps = Json.createArrayBuilder();
+
+            for (AttackStep attackStep : asset.attackSteps) {
+               JsonObjectBuilder jsonAttackStep = Json.createObjectBuilder();
+               jsonAttackStep.add("name", attackStep.name);
+               if (attackStep.attackStepType.equals("#") || attackStep.attackStepType.equals("3") || attackStep.attackStepType.equals("E")) {
+                  jsonAttackStep.add("type", "defense");
+               }
+               else if (attackStep.attackStepType.equals("&")) {
+                  jsonAttackStep.add("type", "and");
+               }
+               else {
+                  jsonAttackStep.add("type", "or");
+               }
+
+               AttackStep superAttackStep = attackStep.getSuper();
+               if (!attackStep.steps.isEmpty() || superAttackStep != null) {
+                  JsonArrayBuilder targets = Json.createArrayBuilder();
+                  for (Step step : attackStep.steps) {
+                     JsonObjectBuilder jsonStep = Json.createObjectBuilder();
+                     jsonStep.add("name", step.to);
+                     jsonStep.add("entity_name", step.getTargetAsset());
+                     jsonStep.add("size", 4000);
+                     targets.add(jsonStep);
+                  }
+                  if (superAttackStep != null) {
+                     JsonObjectBuilder jsonStep = Json.createObjectBuilder();
+                     jsonStep.add("name", superAttackStep.name);
+                     jsonStep.add("entity_name", superAttackStep.asset.name);
+                     jsonStep.add("size", 4000);
+                     targets.add(jsonStep);
+                  }
+                  jsonAttackStep.add("targets", targets);
+               }
+               attackSteps.add(jsonAttackStep);
+            }
+            jsonAsset.add("children", attackSteps);
+         }
+         assets.add(jsonAsset);
+      }
+      json.add("children", assets);
+
+      return json.build().toString();
+   }
+
    public void writeD3(String outputFolder, String outputFileName) {
 
       // Create the path unless it already exists
@@ -92,65 +151,19 @@ public class CompilerWriter {
       (new File(path)).mkdirs();
 
       String ofn = outputFileName.substring(0, outputFileName.lastIndexOf('.'));
-      String outputFile = outputFolder + "/" + ofn + ".json";
-      try {
-         writer = new PrintWriter(outputFile, "UTF-8");
-         writeToJsonStringln("{");
-         writeToJsonStringln(" \"name\": \"securiLang\",");
-         writeToJsonStringln(" \"children\": [");
-         for (Asset asset : model.getAssets()) {
+      String outputFile = outputFolder + "/" + ofn + ".html";
 
-            writeToJsonStringln("  {");
-            writeToJsonStringln("   \"name\": \"" + asset.name + "\",");
-            if (asset.attackSteps.size() > 0) {
-               writeToJsonStringln("   \"children\": [");
-               for (AttackStep attackStep : asset.attackSteps) {
-                  writeToJsonStringln("    {");
-                  writeToJsonStringln("     \"name\": \"" + attackStep.name + "\",");
-                  if (attackStep.attackStepType.equals("#") || attackStep.attackStepType.equals("3") || attackStep.attackStepType.equals("E")) {
-                     writeToJsonStringln("     \"type\": \"defense\",");
-                  }
-                  else {
-                     if (attackStep.attackStepType.equals("&")) {
-                        writeToJsonStringln("     \"type\": \"and\",");
-                     }
-                     else {
-                        writeToJsonStringln("     \"type\": \"or\",");
-                     }
-                  }
-                  AttackStep superAttackStep = attackStep.getSuper();
-                  if (!attackStep.steps.isEmpty() || superAttackStep != null) {
-                     writeToJsonStringln("\"targets\": [");
-                     for (Step step : attackStep.steps) {
-                        writeToJsonStringln(String.format("{\"name\": \"%s\", \"entity_name\": \"%s\", \"size\": 4000}", step.to, step.getTargetAsset()));
-                     }
-                     if (superAttackStep != null) {
-                        writeToJsonStringln(String.format("{\"name\": \"%s\", \"entity_name\": \"%s\", \"size\": 4000}", superAttackStep.name, superAttackStep.asset.name));
-                     }
-                     writeToJsonStringln("],");
-                  }
-                  backtrackJsonString();
-                  writeToJsonStringln("    },");
-               }
-               backtrackJsonString();
-               writeToJsonStringln("   ],");
-            }
-            backtrackJsonString();
-            writeToJsonStringln("  },");
-         }
-         backtrackJsonString();
-         writeToJsonStringln(" ],");
-         backtrackJsonString();
-         writeToJsonStringln("}");
-         writer.println(jsonString);
-         writer.close();
+      InputStream is = this.getClass().getClassLoader().getResourceAsStream("visualization.html");
+      BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+      String content = reader.lines().collect(Collectors.joining(System.lineSeparator()));
+      content = content.replace("{{NAME}}", ofn).replace("{{JSON}}", d3());
+
+      try {
+         PrintWriter out = new PrintWriter(outputFile, "UTF-8");
+         out.print(content);
+         out.close();
       }
-      catch (FileNotFoundException e) {
-         System.out.println("FileNotFoundException");
-         e.printStackTrace();
-      }
-      catch (UnsupportedEncodingException e) {
-         System.out.println("UnsupportedEncodingException");
+      catch (FileNotFoundException | UnsupportedEncodingException e) {
          e.printStackTrace();
       }
    }
