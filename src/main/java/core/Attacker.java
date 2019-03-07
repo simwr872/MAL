@@ -85,15 +85,7 @@ public class Attacker {
       }
    }
 
-   private Map<String, Double> readProfile(String profilePath) {
-      Properties profile = new Properties();
-      try {
-         profile.load(new FileInputStream(profilePath));
-      }
-      catch (IOException e) {
-         System.err.printf("Could not open profile: %s\n", profilePath);
-         System.exit(1);
-      }
+   private Map<String, Double> readProfile(Properties profile) {
       Map<String, Double> profileMap = new HashMap<>();
       for (String name : profile.stringPropertyNames()) {
          // Local ttc overrides ttcfile
@@ -113,7 +105,19 @@ public class Attacker {
    }
 
    public void attack(String profilePath) {
-      AttackStep.ttcHashMap = readProfile(profilePath);
+      Properties profile = new Properties();
+      try {
+         profile.load(new FileInputStream(profilePath));
+      }
+      catch (IOException e) {
+         System.err.printf("Could not open profile: %s\n", profilePath);
+         System.exit(1);
+      }
+      attack(profile);
+   }
+
+   public void attack(Properties profile) {
+      AttackStep.ttcHashMap = readProfile(profile);
 
       debugPrint("The model contains " + Integer.toString(Asset.allAssets.size()) + " assets and " + Integer.toString(AttackStep.allAttackSteps.size()) + " attack steps.");
       AttackStep currentAttackStep = null;
