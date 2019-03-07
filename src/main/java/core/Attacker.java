@@ -15,6 +15,7 @@ public class Attacker {
    protected Set<AttackStep> activeAttackSteps  = new HashSet<>();
    Boolean                   verbose            = false;
    public static String      defaultProfilePath = "./target/generated-sources/attackerProfile.ttc";
+   protected static Map<String, Double> ttcHashMap       = new HashMap<>();
 
    public Attacker() {
       verbose = false;
@@ -59,6 +60,31 @@ public class Attacker {
       }
    }
 
+   public void customizeTtc(String name, String distribution) {
+      ttcHashMap.put(name, Attacker.parseDistribution(distribution));
+   }
+
+   public static double parseDistribution(String dist) {
+      Pattern pattern = Pattern.compile("([a-z]+)\\(*([0-9.]+)*,*([0-9.]+)*\\)*", Pattern.CASE_INSENSITIVE);
+      Matcher matcher = pattern.matcher(dist);
+      matcher.matches();
+      switch (matcher.group(1)) {
+         case "Zero":
+            return AttackStep.oneSecond;
+         case "Infinity":
+            return AttackStep.infinity;
+         case "ExponentialDistribution":
+            return Double.valueOf(matcher.group(2));
+         case "GammaDistribution":
+            return Double.valueOf(matcher.group(2)) * Double.valueOf(matcher.group(3));
+         case "UniformDistribution":
+            return (Double.valueOf(matcher.group(3)) - Double.valueOf(matcher.group(2))) / 2;
+         default:
+            System.err.printf("No matching distribution for: %s\n", dist);
+            return AttackStep.oneSecond;
+      }
+   }
+
    private Map<String, Double> readProfile(String profilePath) {
       Properties profile = new Properties();
       try {
@@ -69,29 +95,15 @@ public class Attacker {
          System.exit(1);
       }
       Map<String, Double> profileMap = new HashMap<>();
-      Pattern pattern = Pattern.compile("([a-z]+)\\(*([0-9.]+)*,*([0-9.]+)*\\)*", Pattern.CASE_INSENSITIVE);
       for (String name : profile.stringPropertyNames()) {
-         Matcher matcher = pattern.matcher(profile.getProperty(name));
-         matcher.matches();
-         switch (matcher.group(1)) {
-            case "Zero":
-               profileMap.put(name, AttackStep.oneSecond);
-               break;
-            case "Infinity":
-               profileMap.put(name, AttackStep.infinity);
-            case "ExponentialDistribution":
-               profileMap.put(name, Double.valueOf(matcher.group(2)));
-               break;
-            case "GammaDistribution":
-               profileMap.put(name, Double.valueOf(matcher.group(2)) * Double.valueOf(matcher.group(3)));
-               break;
-            case "UniformDistribution":
-               profileMap.put(name, (Double.valueOf(matcher.group(3)) - Double.valueOf(matcher.group(2))) / 2);
-               break;
-            default:
-               break;
+         // Local ttc overrides ttcfile
+         if(ttcHashMap.containsKey(name) ) {
+            profileMap.put(name, ttcHashMap.get(name));
+         } else {
+            profileMap.put(name, parseDistribution(profile.getProperty(name)));
          }
       }
+      ttcHashMap.clear();
       return profileMap;
    }
 
@@ -100,7 +112,7 @@ public class Attacker {
       attack(defaultProfilePath);
    }
 
-   private void attack(String profilePath) {
+   public void attack(String profilePath) {
       AttackStep.ttcHashMap = readProfile(profilePath);
 
       debugPrint("The model contains " + Integer.toString(Asset.allAssets.size()) + " assets and " + Integer.toString(AttackStep.allAttackSteps.size()) + " attack steps.");
