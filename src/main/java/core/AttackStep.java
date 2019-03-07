@@ -2,9 +2,6 @@ package core;
 
 import static org.junit.Assert.assertTrue;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,20 +15,17 @@ public class AttackStep {
 
    // This is the file that specifies all of the TTC probability distributions,
    // thus amounting to an attacker capability profile.
-   public String                        ttcConfigFilePath       = "./target/generated-sources/attackerProfile.ttc";
-
-   public final static double           oneSecond               = 0.00001157407;
-   public final static double           infinity                = Double.MAX_VALUE;
-   public double                        ttc                     = Double.MAX_VALUE;
-   public Set<AttackStep>               expectedParents         = new HashSet<>();
-   Set<AttackStep>                      visitedParents          = new HashSet<>();
-   public static List<AttackStep>       allAttackSteps          = new ArrayList<>();
+   public final static double           oneSecond        = 0.00001157407;
+   public final static double           infinity         = Double.MAX_VALUE;
+   public double                        ttc              = Double.MAX_VALUE;
+   public Set<AttackStep>               expectedParents  = new HashSet<>();
+   Set<AttackStep>                      visitedParents   = new HashSet<>();
+   public static List<AttackStep>       allAttackSteps   = new ArrayList<>();
    public String                        assetName;
    public String                        assetClassName;
-   private int                          explanationDepth        = 10;
-   private boolean                      explained               = false;
-   private static boolean               didReadDistributionFile = false;
-   protected static Map<String, Double> ttcHashMap              = new HashMap<>();
+   private int                          explanationDepth = 10;
+   private boolean                      explained        = false;
+   protected static Map<String, Double> ttcHashMap       = new HashMap<>();
 
    public AttackStep() {
       this("Anonymous");
@@ -40,77 +34,6 @@ public class AttackStep {
    public AttackStep(String name) {
       this.assetName = name;
       allAttackSteps.add(this);
-      if (!didReadDistributionFile) {
-         readDistribution();
-      }
-   }
-
-   private void readDistribution() {
-      try {
-         BufferedReader in = new BufferedReader(new FileReader(ttcConfigFilePath));
-         String line = "";
-         while ((line = in.readLine()) != null) {
-            addTtcHashMapRecord(line);
-         }
-         // System.out.println(ttcHashMap.toString());
-         // System.out.println(ttcHashMap.get("OperatingSystem.maliciousConnectBypassEnpointProtection"));
-         in.close();
-         didReadDistributionFile = true;
-      }
-      catch (Exception e) {
-         System.out.println(e.toString());
-         System.exit(-1);
-      }
-   }
-
-   public void addTtcHashMapRecord(String distributionString) {
-      String parts[] = distributionString.split("=");
-      String attackStepName = parts[0].trim();
-      String distributionParts[] = parts[1].split("\\(");
-      String distributionType = distributionParts[0].trim();
-      String parameterString = "";
-      List<Double> parameters = new ArrayList<>();
-      if (Array.getLength(distributionParts) > 1) {
-         parameterString = distributionParts[1].split("\\)")[0];
-         if (!parameterString.contains(",")) {
-            parameters.add(Double.parseDouble(parameterString.trim()));
-         }
-         else {
-            if (Array.getLength(distributionParts) > 1) {
-               parameterString = distributionParts[1].split("\\)")[0];
-               if (parameterString.contains(",")) {
-                  String tempParameterString[] = parameterString.split("\\,");
-                  for (String pString : tempParameterString) {
-                     parameters.add(Double.parseDouble(pString.trim()));
-                  }
-               }
-            }
-         }
-      }
-      addTtcHashMapRecord(attackStepName, distributionType, parameters);
-   }
-
-   public void customizeTtc(String distributionType, List<Double> parameters) {
-      String attackStepName = this.assetClassName + "." + decapitalize(this.attackStepName());
-      addTtcHashMapRecord(attackStepName, distributionType, parameters);
-   }
-
-   public void addTtcHashMapRecord(String attackStepName, String distributionType, List<Double> parameters) {
-      if (distributionType.equals("Zero")) {
-         ttcHashMap.put(attackStepName, oneSecond);
-      }
-      if (distributionType.equals("Infinity")) {
-         ttcHashMap.put(attackStepName, infinity);
-      }
-      if (distributionType.equals("ExponentialDistribution")) {
-         ttcHashMap.put(attackStepName, parameters.get(0));
-      }
-      if (distributionType.equals("GammaDistribution")) {
-         ttcHashMap.put(attackStepName, parameters.get(0) * parameters.get(1));
-      }
-      if (distributionType.equals("UniformDistribution")) {
-         ttcHashMap.put(attackStepName, (parameters.get(1) - parameters.get(0)) / 2);
-      }
    }
 
    protected void setExpectedParents() {
@@ -263,7 +186,7 @@ public class AttackStep {
 
    private void explainUncompromise(String indent, int remainingExplanationSteps) {
       System.out.print(Integer.toString(remainingExplanationSteps) + " remaining explanation steps.");
-		if (remainingExplanationSteps >= 0) {
+      if (remainingExplanationSteps >= 0) {
          if (ttc == AttackStep.infinity) {
             if (this instanceof AttackStepMax) {
                System.out.println(indent + " didn't reach " + fullName() + " [" + Double.toString(this.ttc) + "] (AND) because ");
@@ -302,7 +225,6 @@ public class AttackStep {
       System.out.println("\nExplaining compromise:");
       explainCompromise("", explanationDepth);
    }
-
 
    private String capitalize(final String line) {
       return Character.toUpperCase(line.charAt(0)) + line.substring(1);
