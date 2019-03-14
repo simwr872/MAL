@@ -8,10 +8,16 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -34,6 +40,8 @@ public class CompilerModel {
 
       String fileWithIncludesPath = includeIncludes(securiLangFolder, securiLangFile);
 
+      preprocess(fileWithIncludesPath);
+
       InputStream is = System.in;
       if (securiLangFile != null) {
          System.out.println("Reading from " + fileWithIncludesPath);
@@ -51,6 +59,55 @@ public class CompilerModel {
       sLangListener extractor = new SecuriLangListener(this);
       walker.walk(extractor, tree); // initiate walk of tree with listener
       update();
+   }
+
+   private void preprocess(String path) {
+      String file = null;
+      try {
+         file = new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
+      }
+      catch (IOException e) {
+         e.printStackTrace();
+      }
+      // LET, local variables. The fact that the variables are local complicates
+      // things a bit. Global variables could just be easily replaced. Local
+      // variables cannot be parsed by antlr since the string representation is
+      // already being dealt with (it is too late). We have to match and extract
+      // attack steps before antlr goes to work and perform a simple string
+      // replace.
+
+      // TODO: Not really happy with this
+      Pattern stepPattern = Pattern.compile("[^-][-+]>([^\\}|&]+)", Pattern.CASE_INSENSITIVE);
+      Pattern varPattern = Pattern.compile("let\\s+([a-z]+)\\s*=\\s*([^,]+),", Pattern.CASE_INSENSITIVE);
+
+      String master = "";
+
+      Matcher step = stepPattern.matcher(file);
+      while (step.find()) {
+         master += file.substring(0, step.start(1));
+         String append = file.substring(step.end(1), file.length());
+         String text = step.group(1);
+
+         Matcher var = varPattern.matcher(text);
+
+         while (var.find()) {
+            String name = var.group(1);
+            String content = var.group(2);
+            System.out.printf("var '%s' content '%s'\n", name, content);
+            text = text.substring(0, var.start()) + text.substring(var.end(), text.length());
+            text = text.replaceAll(name, content);
+            var = varPattern.matcher(text);
+         }
+         master += text;
+         file = append;
+         step = stepPattern.matcher(file);
+      }
+      try (PrintWriter out = new PrintWriter(path)) {
+         out.println(master + file);
+      }
+      catch (FileNotFoundException e) {
+         e.printStackTrace();
+      }
    }
 
    public List<Asset> getAssets() {
