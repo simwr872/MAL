@@ -16,6 +16,7 @@ import se.kth.mal.sLangParser.SetChildContext;
 import se.kth.mal.sLangParser.SetOperationContext;
 import se.kth.mal.sLangParser.SetOperatorContext;
 import se.kth.mal.steps.Connection;
+import se.kth.mal.steps.RecursiveConnection;
 import se.kth.mal.steps.SelectConnection;
 import se.kth.mal.steps.Step;
 

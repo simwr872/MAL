@@ -154,9 +154,17 @@ expression
     |   setOperation '.' Identifier #select
     ;
 
-setOperation
-	:	(preExpressionStep '.' )* '(' setChild (setOperator setChild)+ ')' ('[' Identifier ']')? ('.' expressionStep)*
+expressionStep
+    :   Identifier ('[' Identifier ']')? transitiveOperator?
+    ;
+
+transitiveOperator
+	:	'+'
 	;
+
+expressionChild
+    :   expressionStep ('.' expressionStep)*
+    ;
     
 setOperator
     :   '/\\'
