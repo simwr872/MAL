@@ -95,7 +95,7 @@ public class CompilerModel {
             String content = var.group(2);
             System.out.printf("var '%s' content '%s'\n", name, content);
             text = text.substring(0, var.start()) + text.substring(var.end(), text.length());
-            text = text.replaceAll(name, content);
+            text = text.replace(name, content);
             var = varPattern.matcher(text);
          }
          master += text;
