@@ -4,11 +4,12 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import se.kth.mal.sLangParser.CategoryDeclarationContext;
 import se.kth.mal.sLangParser.ChildExtensionContext;
-import se.kth.mal.sLangParser.ExpressionChildContext;
 import se.kth.mal.sLangParser.ExpressionStepContext;
 import se.kth.mal.sLangParser.ImmediateContext;
 import se.kth.mal.sLangParser.NormalContext;
 import se.kth.mal.sLangParser.SelectContext;
+import se.kth.mal.sLangParser.SetChildContext;
+import se.kth.mal.sLangParser.SetOperationContext;
 import se.kth.mal.sLangParser.SetOperatorContext;
 import se.kth.mal.steps.Connection;
 import se.kth.mal.steps.SelectConnection;
@@ -117,41 +118,43 @@ public class SecuriLangListener extends sLangBaseListener {
       attackStep.steps.add(step);
    }
 
+   public void parseExpressionStep(ExpressionStepContext ctx, Step step) {
+      String cast = (ctx.Identifier().size() > 1 ? ctx.Identifier(1).getText() : "");
+      Connection connection = new Connection(ctx.Identifier(0).getText(), cast);
+      if (step.connections.isEmpty()) {
+         connection.previousAsset = asset.name;
+      }
+      step.connections.add(connection);
+   }
+
    @Override
    public void enterNormal(NormalContext ctx) {
       // Normal step with any amount of steps, may or may not have specified
       // type.
       Step step = new Step(asset.name, attackStep.name, ctx.Identifier().getText());
       for (ExpressionStepContext esc : ctx.expressionStep()) {
-         String cast = (esc.Identifier().size() > 1 ? esc.Identifier(1).getText() : "");
-         Connection connection = new Connection(esc.Identifier(0).getText(), cast);
-         if (step.connections.isEmpty()) {
-            connection.previousAsset = asset.name;
-         }
-         step.connections.add(connection);
+         parseExpressionStep(esc, step);
       }
       attackStep.steps.add(step);
    }
 
-   @Override
-   public void enterSelect(SelectContext ctx) {
-      // Select step, may have any amount of intermediate steps. Select step may
-      // also have type, followed by any amount of normal steps.
-      String attack = (ctx.Identifier().size() > 1 ? ctx.Identifier(1).getText() : ctx.Identifier(0).getText());
-      String cast = (ctx.Identifier().size() > 1 ? ctx.Identifier(0).getText() : "");
-      Step step = new Step(asset.name, attackStep.name, attack);
+   public void parseSetOperation(SetOperationContext ctx, Step step) {
+      // (alpha /\ bravo /\ (charlie[golf] \/ delta)[hotel])[echo].foxtrot
       SelectConnection select = new SelectConnection();
       select.previousAsset = asset.name;
-      select.cast = cast;
-      for (ExpressionChildContext ecc : ctx.expressionChild()) {
+      select.cast = (ctx.Identifier() != null ? ctx.Identifier().getText() : "");
+
+      for (SetChildContext scc : ctx.setChild()) {
          Step childStep = new Step(asset.name, attackStep.name, "");
-         for (ExpressionStepContext esc : ecc.expressionStep()) {
-            String _cast = (esc.Identifier().size() > 1 ? esc.Identifier(1).getText() : "");
-            Connection connection = new Connection(esc.Identifier(0).getText(), _cast);
-            if (step.connections.isEmpty()) {
-               connection.previousAsset = asset.name;
+         if (scc.setOperation() != null) {
+            // parse again recusive
+            parseSetOperation(scc.setOperation(), childStep);
+         }
+         else {
+            // normal
+            for (ExpressionStepContext esc : scc.expressionStep()) {
+               parseExpressionStep(esc, childStep);
             }
-            childStep.connections.add(connection);
          }
          select.steps.add(childStep);
       }
@@ -159,12 +162,18 @@ public class SecuriLangListener extends sLangBaseListener {
          select.operators.add(soc.getText());
       }
       step.connections.add(select);
-
       for (ExpressionStepContext esc : ctx.expressionStep()) {
-         String _cast = (esc.Identifier().size() > 1 ? esc.Identifier(1).getText() : "");
-         Connection connection = new Connection(esc.Identifier(0).getText(), _cast);
-         step.connections.add(connection);
+         parseExpressionStep(esc, step);
       }
+   }
+
+   @Override
+   public void enterSelect(SelectContext ctx) {
+      // Select step, may have any amount of intermediate steps. Select step may
+      // also have type, followed by any amount of normal steps.
+      String attack = ctx.Identifier().getText();
+      Step step = new Step(asset.name, attackStep.name, attack);
+      parseSetOperation(ctx.setOperation(), step);
       attackStep.steps.add(step);
    }
 }

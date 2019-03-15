@@ -151,22 +151,27 @@ attackStepType
 expression
     :   Identifier #immediate
     |   (expressionStep '.' )+ Identifier #normal
-    |  '(' expressionChild (setOperator expressionChild)+ ')' ('[' Identifier ']')? ('.' expressionStep)* '.' Identifier #select
+    |	setOperation '.' Identifier #select
     ;
 
-expressionStep
-    :   Identifier ('[' Identifier ']')?
-    ;
-
-expressionChild
-    :   expressionStep ('.' expressionStep)*
-    ;
+setOperation
+	:	'(' setChild (setOperator setChild)+ ')' ('[' Identifier ']')? ('.' expressionStep)*
+	;
     
 setOperator
     :   '/\\'
     |   '\\/'
     ;
+	
 
+setChild
+	:	expressionStep ('.' expressionStep)*
+	|	setOperation
+	;
+
+expressionStep
+    :   Identifier ('[' Identifier ']')?
+    ;
 Identifier
     :   JavaLetter JavaLetterOrDigit*
 	;
