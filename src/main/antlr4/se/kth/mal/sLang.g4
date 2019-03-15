@@ -85,8 +85,8 @@ children
 
 // -> indicates that the generalization attack step definition is replaced by the specialization, while +> denotes the specialization is appended
 childOperator
-	:	'->'
-	|	'+>'
+	:	'->' #childReplacement
+	|	'+>' #childExtension
 	;
 
 // An attack step can have sub-attack-steps only to better organize the code.

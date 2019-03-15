@@ -818,7 +818,7 @@ public class SecuriCADCodeGenerator {
 
          writer.println("@Override");
          writer.println("public Set<AttackStep> getAttackStepChildren() {");
-         if (!attackStep.isSpecialization()) {
+         if (!attackStep.isSpecialization() || attackStep.isExtension) {
             writer.println("Set<AttackStep> set = new HashSet<>(super.getAttackStepChildren());");
          }
          else {
