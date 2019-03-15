@@ -78,7 +78,7 @@ public class CompilerModel {
 
       // TODO: Not really happy with this
       Pattern stepPattern = Pattern.compile("[^-][-+]>([^\\}|&]+)", Pattern.CASE_INSENSITIVE);
-      Pattern varPattern = Pattern.compile("let\\s+([a-z]+)\\s*=\\s*([^,]+),", Pattern.CASE_INSENSITIVE);
+      Pattern varPattern = Pattern.compile("let\\s+([a-z0-9_]+)\\s*=\\s*([^,]+),", Pattern.CASE_INSENSITIVE);
 
       String master = "";
 
@@ -95,7 +95,9 @@ public class CompilerModel {
             String content = var.group(2);
             System.out.printf("var '%s' content '%s'\n", name, content);
             text = text.substring(0, var.start()) + text.substring(var.end(), text.length());
-            text = text.replace(name, content);
+            // Escape both pattern and replacement. Make sure we only find
+            // occurances that are not contained words.
+            text = text.replaceAll("([^a-z0-9_])" + Pattern.quote(name) + "([^a-z0-9_])", "$1" + Matcher.quoteReplacement(content) + "$2");
             var = varPattern.matcher(text);
          }
          master += text;
