@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>se.kth</groupId>
   <artifactId>mal-compiler</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.0.3-SNAPSHOT</version>
   <build>
     <sourceDirectory>src/main/java</sourceDirectory>
     <testSourceDirectory>src/test/java</testSourceDirectory>
