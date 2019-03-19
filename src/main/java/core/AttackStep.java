@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
+import static java.lang.Math.abs;
 
 public class AttackStep {
 
@@ -115,6 +116,19 @@ public class AttackStep {
       }
       else {
          System.out.println(fullName() + ".ttc was supposed to be infinite, but was " + Double.toString(ttc) + ".");
+         System.out.println("\nExplaining compromise:");
+         explainCompromise("", explanationDepth);
+         assertTrue(false);
+      }
+   }
+
+   public void assertUncompromisedFrom(AttackStep expectedParent) {
+      if ((abs(ttc - expectedParent.ttc) == Double.MAX_VALUE) || (ttc == Double.MAX_VALUE && expectedParent.ttc == Double.MAX_VALUE)) {
+         System.out.println("+ " + fullName() + " (" + Double.toString(ttc) + ")" + " was not reached from " + expectedParent.fullName() + " (" + Double.toString(expectedParent.ttc) + ")" + " as expected.");
+         assertTrue(true);
+      }
+      else {
+         System.out.println(fullName() + ".ttc was supposed to be infinite, but was " + Double.toString(ttc) + ", while " + expectedParent.fullName() + ".ttc was " + Double.toString(expectedParent.ttc) + ".");
          System.out.println("\nExplaining compromise:");
          explainCompromise("", explanationDepth);
          assertTrue(false);
