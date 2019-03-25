@@ -100,8 +100,11 @@ public class Step {
     *           final prefix. True if not.
     */
    public void print(PrintWriter writer, String format, String suffix, boolean endStep) {
+      print(writer, format, "", suffix, endStep);
+   }
+
+   public void print(PrintWriter writer, String format, String prefix, String suffix, boolean endStep) {
       int close = printCast(writer);
-      String prefix = "";
       for (Connection connection : connections) {
          prefix = connection.print(writer, prefix, suffix);
          close += (connection.cast.isEmpty() ? 1 : 2);

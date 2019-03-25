@@ -47,7 +47,7 @@ public class SelectConnection extends Connection {
       for (Step step : steps) {
          String set = decapitalize(asset) + "_" + RandomStringUtils.randomAlphabetic(5);
          writer.printf("Set<%s> %s = new HashSet<>();\n", asset, set);
-         step.print(writer, set + ".add(%s);\n", setSuffix, false);
+         step.print(writer, set + ".add(%s);\n", prefix, setSuffix, false);
          sets.add(set);
       }
 
