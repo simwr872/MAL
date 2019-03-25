@@ -35,9 +35,11 @@ usage:
  -o,--output <arg>    output folder path for generated code
  -p,--package <arg>   package name of generated code
  -t,--tests <arg>     output folder path for generated test code
- -v,--visual <arg>    icons for visualization
+ -v,--visual <arg>    icons for visualization (foreseeti backend only)
 
 ```
+
+See the [foreseeti backend README](/src/main/java/com/foreseeti/generator/README.md) for details specific to the foreseeti backend.
 
 ## Built With
 
@@ -52,4 +54,4 @@ usage:
 ## Contributors
 
 * **Sotirios Katsikeas**
-* **Simon Wrede**
+* **Simon Wrede (Foreseeti AB)**

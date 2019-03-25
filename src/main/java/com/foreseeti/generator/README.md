@@ -1,0 +1,24 @@
+# foreseeti securiCAD generator
+
+In order to produce language JAR files compatible with foreseeti's securiCAD, additional prerequisite information has to be provided:
+* securiCAD libraries mustbe available on the command line
+* Icons for asset classes must be provided (optional)
+
+## securiCAD libraries
+
+The easiest way is to build the foreseeti kernel-CAD repository which will place the files in the local Maven repository.
+If this is not an option, the following JARs have to be placed on the MAL compiler's classpath:
+* Corelib - `com.foreseeti.corelib-<ver>.jar`
+* Simulator - `simulator-<ver>.jar`
+
+## Asset class icons
+
+In order for the securiCAD tools to render the asset class icons, they must be provided to the MAL compiler and built into the language JAR file.
+
+securiCAD supports two different image formats - PNG and SVG. PNG is the only format supported by securiCAD Professional. securiCAD Enterprise supports both SVG and PNG, with SVG being the preferred format.
+
+Icon files are provided by specifying a directory containing all image files, where the file names without the file extensions are matched with the asset names from the language specification. For example, an asset class called `Network` must have the image file name `Network.svg` or `Network.png`.
+
+If SVG files are provided, PNGs will automatically be generated in the resulting language JAR. This is the preferred way as the resulting jar will work in securiCAD Professional and give securiCAD Enterprise its preferred format.
+
+Providing PNGs will work with both products but will give a suboptimal rendering in the securiCAD Enterprise Web Modeler.
