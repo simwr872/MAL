@@ -1,5 +1,8 @@
 package se.kth.mal;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import se.kth.mal.sLangParser.CategoryDeclarationContext;
@@ -7,6 +10,7 @@ import se.kth.mal.sLangParser.ChildExtensionContext;
 import se.kth.mal.sLangParser.ExpressionStepContext;
 import se.kth.mal.sLangParser.ImmediateContext;
 import se.kth.mal.sLangParser.NormalContext;
+import se.kth.mal.sLangParser.PreExpressionStepContext;
 import se.kth.mal.sLangParser.SelectContext;
 import se.kth.mal.sLangParser.SetChildContext;
 import se.kth.mal.sLangParser.SetOperationContext;
@@ -118,13 +122,17 @@ public class SecuriLangListener extends sLangBaseListener {
       attackStep.steps.add(step);
    }
 
-   public void parseExpressionStep(ExpressionStepContext ctx, Step step) {
-      String cast = (ctx.Identifier().size() > 1 ? ctx.Identifier(1).getText() : "");
-      Connection connection = new Connection(ctx.Identifier(0).getText(), cast);
+   public void parseExpressionStep(List<TerminalNode> identifiers, Step step) {
+      String cast = (identifiers.size() > 1 ? identifiers.get(1).getText() : "");
+      Connection connection = new Connection(identifiers.get(0).getText(), cast);
       if (step.connections.isEmpty()) {
          connection.previousAsset = asset.name;
       }
       step.connections.add(connection);
+   }
+
+   public void parseExpressionStep(ExpressionStepContext ctx, Step step) {
+      parseExpressionStep(ctx.Identifier(), step);
    }
 
    @Override
@@ -138,8 +146,12 @@ public class SecuriLangListener extends sLangBaseListener {
       attackStep.steps.add(step);
    }
 
-   public void parseSetOperation(SetOperationContext ctx, Step step) {
+   public void parseSetOperation(List<PreExpressionStepContext> pre, SetOperationContext ctx, Step step) {
       // (alpha /\ bravo /\ (charlie[golf] \/ delta)[hotel])[echo].foxtrot
+      // We make sure to always bring whatever was infront of our setoperation,
+      // finally it is prepended before any normal expression steps are
+      // evaluated
+      pre.addAll(ctx.preExpressionStep());
       SelectConnection select = new SelectConnection();
       select.previousAsset = asset.name;
       select.cast = (ctx.Identifier() != null ? ctx.Identifier().getText() : "");
@@ -148,10 +160,13 @@ public class SecuriLangListener extends sLangBaseListener {
          Step childStep = new Step(asset.name, attackStep.name, "");
          if (scc.setOperation() != null) {
             // parse again recusive
-            parseSetOperation(scc.setOperation(), childStep);
+            parseSetOperation(pre, scc.setOperation(), childStep);
          }
          else {
             // normal
+            for (PreExpressionStepContext pesc : pre) {
+               parseExpressionStep(pesc.Identifier(), childStep);
+            }
             for (ExpressionStepContext esc : scc.expressionStep()) {
                parseExpressionStep(esc, childStep);
             }
@@ -173,7 +188,7 @@ public class SecuriLangListener extends sLangBaseListener {
       // also have type, followed by any amount of normal steps.
       String attack = ctx.Identifier().getText();
       Step step = new Step(asset.name, attackStep.name, attack);
-      parseSetOperation(ctx.setOperation(), step);
+      parseSetOperation(new ArrayList<PreExpressionStepContext>(), ctx.setOperation(), step);
       attackStep.steps.add(step);
    }
 }

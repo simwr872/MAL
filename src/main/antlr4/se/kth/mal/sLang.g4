@@ -151,11 +151,11 @@ attackStepType
 expression
     :   Identifier #immediate
     |   (expressionStep '.' )+ Identifier #normal
-    |	setOperation '.' Identifier #select
+    |   setOperation '.' Identifier #select
     ;
 
 setOperation
-	:	'(' setChild (setOperator setChild)+ ')' ('[' Identifier ']')? ('.' expressionStep)*
+	:	(preExpressionStep '.' )* '(' setChild (setOperator setChild)+ ')' ('[' Identifier ']')? ('.' expressionStep)*
 	;
     
 setOperator
@@ -172,6 +172,12 @@ setChild
 expressionStep
     :   Identifier ('[' Identifier ']')?
     ;
+
+// Straight up copy, we need to differentiate steps before and after parenthesis but still be in the same parse-step
+preExpressionStep
+    :   Identifier ('[' Identifier ']')?
+    ;
+
 Identifier
     :   JavaLetter JavaLetterOrDigit*
 	;
