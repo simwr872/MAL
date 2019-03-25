@@ -35,7 +35,7 @@ usage:
  -o,--output <arg>    output folder path for generated code
  -p,--package <arg>   package name of generated code
  -t,--tests <arg>     output folder path for generated test code
- -v,--visual <arg>    icons for visualization (foreseeti backend only)
+ -v,--visual <arg>    folder path containing icon image files for visualization (foreseeti backend only)
 
 ```
 
