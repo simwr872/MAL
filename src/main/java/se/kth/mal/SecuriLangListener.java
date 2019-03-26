@@ -125,7 +125,15 @@ public class SecuriLangListener extends sLangBaseListener {
 
    public void parseExpressionStep(List<TerminalNode> identifiers, Step step) {
       String cast = (identifiers.size() > 1 ? identifiers.get(1).getText() : "");
-      Connection connection = new Connection(identifiers.get(0).getText(), cast);
+      Connection connection;
+      if (transitive) {
+         connection = new RecursiveConnection(identifiers.get(0).getText());
+         System.out.println("Recursive connection, " + connection.field + ", cast, " + cast);
+      }
+      else {
+         connection = new Connection(identifiers.get(0).getText(), cast);
+         System.out.println("Normal connection, " + connection.field + ", cast, " + cast);
+      }
       if (step.connections.isEmpty()) {
          connection.previousAsset = asset.name;
       }
@@ -152,6 +160,7 @@ public class SecuriLangListener extends sLangBaseListener {
       // We make sure to always bring whatever was infront of our setoperation,
       // finally it is prepended before any normal expression steps are
       // evaluated
+      System.out.println("Parsing set operation");
       pre.addAll(ctx.preExpressionStep());
       SelectConnection select = new SelectConnection();
       select.previousAsset = asset.name;
@@ -161,13 +170,19 @@ public class SecuriLangListener extends sLangBaseListener {
          Step childStep = new Step(asset.name, attackStep.name, "");
          if (scc.setOperation() != null) {
             // parse again recusive
-            parseSetOperation(pre, scc.setOperation(), childStep);
+            System.out.println("Set operation contains more another set operation...");
+            // We dont want to modify our pre array
+            List<PreExpressionStepContext> npre = new ArrayList<>();
+            npre.addAll(pre);
+            parseSetOperation(npre, scc.setOperation(), childStep);
          }
          else {
             // normal
+            System.out.println("Precontextlist");
             for (PreExpressionStepContext pesc : pre) {
                parseExpressionStep(pesc.Identifier(), childStep);
             }
+            System.out.println("childlist");
             for (ExpressionStepContext esc : scc.expressionStep()) {
                parseExpressionStep(esc, childStep);
             }
@@ -178,9 +193,11 @@ public class SecuriLangListener extends sLangBaseListener {
          select.operators.add(soc.getText());
       }
       step.connections.add(select);
+      System.out.println("postlist");
       for (ExpressionStepContext esc : ctx.expressionStep()) {
          parseExpressionStep(esc, step);
       }
+      System.out.println("COMPLETE");
    }
 
    @Override

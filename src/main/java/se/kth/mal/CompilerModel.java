@@ -279,6 +279,7 @@ public class CompilerModel {
     *           Step to be updated.
     */
    void updateStep(Step step) {
+      System.out.println("Updating step, " + step);
       for (Connection connection : step.connections) {
          if (connection instanceof SelectConnection) {
             for (Step childStep : ((SelectConnection) connection).steps) {
@@ -294,6 +295,7 @@ public class CompilerModel {
             ((SelectConnection) connection).update();
          }
          else {
+            System.out.println("prev: " + connection.previousAsset + ", to field " + connection.field);
             Association association = getConnectedAssociation(connection.previousAsset, connection.field);
             boolean previousAssetLeft = isLeftAsset(association, connection.previousAsset);
             connection.associationUpdate(association, previousAssetLeft);
@@ -303,6 +305,7 @@ public class CompilerModel {
             step.connections.get(nextIndex).previousAsset = connection.getCastedAsset();
          }
       }
+      System.out.println("Done updating step, " + step.from + ", " + step.to);
    }
 
    public void update() {
