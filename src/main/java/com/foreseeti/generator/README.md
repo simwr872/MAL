@@ -2,14 +2,14 @@
 
 In order to produce language JAR files compatible with foreseeti's securiCAD, additional prerequisite information has to be provided:
 * securiCAD libraries must be available for compile time dependencies
-* the MAL language spec has to use supported categories
+* The MAL language spec has to use supported categories
 * Image files for asset class icons must be provided (optional)
 
 ## securiCAD libraries
 
 The easiest way is to build the foreseeti `kernel-CAD` repository which will publish the dependencies in the local Maven repository.
 
-In order for Maven to find the dependencies, they must be declared in the `pom.xml` file by adding the following inside the `<dependencies>' section:
+In order for Maven to find the dependencies, they must be declared in the `pom.xml` file by adding the following inside the `<dependencies>` section:
 ```
 <dependency>
     <groupId>com.foreseeti</groupId>
