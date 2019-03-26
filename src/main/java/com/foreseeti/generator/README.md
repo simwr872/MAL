@@ -9,18 +9,17 @@ In order to produce language JAR files compatible with foreseeti's securiCAD, ad
 
 The easiest way is to build the foreseeti `kernel-CAD` repository which will publish the dependencies in the local Maven repository.
 
-In order for Maven to find the dependencies, they must be declared in the `pom.xml` file by adding the following inside the `<dependencies>' sectiton:
+In order for Maven to find the dependencies, they must be declared in the `pom.xml` file by adding the following inside the `<dependencies>' section:
 ```
 <dependency>
-    <dependency>
-         <groupId>com.foreseeti</groupId>
-         <artifactId>corelib</artifactId>
-         <version>1.4.7</version>
-    </dependency>
-    <dependency>
-        <groupId>com.foreseeti</groupId>
-        <artifactId>simulator</artifactId>
-        <version>1.4.7</version>
+    <groupId>com.foreseeti</groupId>
+    <artifactId>corelib</artifactId>
+    <version>1.4.7</version>
+</dependency>
+<dependency>
+    <groupId>com.foreseeti</groupId>
+    <artifactId>simulator</artifactId>
+    <version>1.4.7</version>
 </dependency>
 ```
 
@@ -32,14 +31,14 @@ If using Maven is not an option, the following JARs have to be placed on the MAL
 
 ## Note on Categories
 
-Currently, securiCAD *requires* the categories used in the MAL spec to be a subset of:
-* Communication
-* Container
-* Networking
-* Security
-* System
-* User
-* Zone
+Currently, securiCAD *requires* the categories used in the MAL spec to be taken from the following set:
+* `Communication`
+* `Container`
+* `Networking`
+* `Security`
+* `System`
+* `User`
+* `Zone`
 
 Future releases of securiCAD may support dynamic generation of categories based on the language.
 
