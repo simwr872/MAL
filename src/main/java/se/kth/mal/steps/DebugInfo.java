@@ -16,8 +16,6 @@ public class DebugInfo {
    }
 
    public void print() {
-      System.err.printf("Raw string '%s'\n", raw);
-      System.err.printf("  Start: Ln %s, Col %s\n", startLine, startChar);
-      System.err.printf("  End: Ln %s, Col %s\n", endLine, endChar);
+      System.err.printf("Line %s:%s to %s:%s, raw str '%s'\n", startLine, startChar, endLine, endChar, raw);
    }
 }

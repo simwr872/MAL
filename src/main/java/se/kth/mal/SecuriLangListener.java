@@ -188,12 +188,17 @@ public class SecuriLangListener extends sLangBaseListener {
    public void enterExpression(ExpressionContext ctx) {
       String reachedStep = ctx.Identifier().getText();
       Step currentStep = new Step(asset.name, attackStep.name, reachedStep);
-      inPrint("New path from '%s$%s' through '%s' reaching '%s'", asset.name, attackStep.name, ctx.expressionSteps().getText(), reachedStep);
-      level++;
-      for (ExpressionStepContext step : ctx.expressionSteps().expressionStep()) {
-         currentStep.connections.add(parseStep(step));
+      if (ctx.expressionSteps() != null) {
+         inPrint("New path from '%s$%s' through '%s' reaching '%s'", asset.name, attackStep.name, ctx.expressionSteps().getText(), reachedStep);
+         level++;
+         for (ExpressionStepContext step : ctx.expressionSteps().expressionStep()) {
+            currentStep.connections.add(parseStep(step));
+         }
+         level--;
       }
-      level--;
+      else {
+         inPrint("New path from '%s$%s' to self reaching '%s'", asset.name, attackStep.name, reachedStep);
+      }
       currentStep.debug = debug(ctx);
       attackStep.steps.add(currentStep);
    }

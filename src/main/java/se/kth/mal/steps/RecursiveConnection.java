@@ -42,4 +42,9 @@ public class RecursiveConnection extends Connection {
       prefix = iterator + ".";
       return prefix;
    }
+
+   @Override
+   public String illustrate() {
+      return field + "+";
+   }
 }

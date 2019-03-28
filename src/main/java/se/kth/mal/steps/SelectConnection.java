@@ -24,6 +24,9 @@ public class SelectConnection extends Connection {
 
    @Override
    public Connection reverse() {
+      // Reversing a set operation
+      // foxtrot.(alpha.bravo \/ charlie.bravo).delta.compromise
+      // delta.
       SelectConnection connection = new SelectConnection();
       connection.previousAsset = this.asset;
       connection.previousCast = this.cast;
@@ -70,5 +73,17 @@ public class SelectConnection extends Connection {
          prefix = decapitalize(asset) + ".";
       }
       return prefix;
+   }
+
+   @Override
+   public String illustrate() {
+      String str = "(";
+      for (int i = 0; i < steps.size(); i++) {
+         str += steps.get(i).illustrate();
+         if (i < operators.size()) {
+            str += " " + operators.get(i) + " ";
+         }
+      }
+      return str + ")";
    }
 }

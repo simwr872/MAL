@@ -143,4 +143,8 @@ public class Connection {
 
       return prefix;
    }
+
+   public String illustrate() {
+      return field;
+   }
 }
