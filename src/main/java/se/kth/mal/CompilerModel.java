@@ -279,33 +279,57 @@ public class CompilerModel {
     *           Step to be updated.
     */
    void updateStep(Step step) {
-      System.out.println("Updating step, " + step);
-      for (Connection connection : step.connections) {
-         if (connection instanceof SelectConnection) {
-            for (Step childStep : ((SelectConnection) connection).steps) {
-               updateStep(childStep);
-            }
-            String targetAsset = ((SelectConnection) connection).steps.get(0).getTargetAsset();
-            for (int i = 1; i < ((SelectConnection) connection).steps.size(); i++) {
-               String target = ((SelectConnection) connection).steps.get(i).getTargetAsset();
-               if (!target.equals(targetAsset)) {
-                  throw new Error(String.format("Different set type on index %d; %s =/= %s", i, targetAsset, target));
-               }
-            }
-            ((SelectConnection) connection).update();
+      // A step is a collection of connections from one assets compromised
+      // attack step to another. At this stage a step only has whatever
+      // attackStep it came from and what asset it came from. Note that this
+      // asset will be incorrect for set operations that are chained. This is
+      // fine however since we will travel down it and update on the fly.
+
+      for (int i = 0; i < step.connections.size(); i++) {
+         // To update a connection we must first verify that it is possible,
+         // then check what asset it is and update the next steps previous
+         // asset.
+         Connection connection = step.connections.get(i);
+         if (i == 0) {
+            // First step would not have a previous asset so we set this to the
+            // steps asset. Usually this is just the parent step but might be an
+            // updated previous value from traversing a chain with a set
+            // operation.
+            connection.previousAsset = step.asset;
+            System.out.println("first child setting asset " + step.asset);
          }
-         else {
-            System.out.println("prev: " + connection.previousAsset + ", to field " + connection.field);
+         if (!(connection instanceof SelectConnection)) {
+            // Normal step
+            System.out.println(connection.field);
             Association association = getConnectedAssociation(connection.previousAsset, connection.field);
             boolean previousAssetLeft = isLeftAsset(association, connection.previousAsset);
             connection.associationUpdate(association, previousAssetLeft);
          }
-         int nextIndex = step.connections.indexOf(connection) + 1;
-         if (nextIndex < step.connections.size()) {
-            step.connections.get(nextIndex).previousAsset = connection.getCastedAsset();
+         else {
+            // We are in a set operation, we can just start updating its child
+            // steps while updating their assets to be the connections previous
+            // asset since this would've changed during parsing.
+            String asset = "";
+            for (int j = 0; j < ((SelectConnection) connection).steps.size(); j++) {
+               Step child = ((SelectConnection) connection).steps.get(j);
+               child.asset = connection.previousAsset;
+               System.out.println("updated set child prev asset " + child.asset);
+               updateStep(child);
+               if (j == 0) {
+                  asset = child.getTargetAsset();
+               }
+               else if (!child.getTargetAsset().equals(asset)) {
+                  throw new Error(String.format("Different set type on index %d; %s =/= %s", i, child.getTargetAsset(), asset));
+               }
+            }
+            ((SelectConnection) connection).update();
+         }
+         if (i + 1 < step.connections.size()) {
+            // Update the next steps previous asset
+            step.connections.get(i + 1).previousAsset = connection.getCastedAsset();
+            System.out.println("setting next prev asset " + connection.getCastedAsset());
          }
       }
-      System.out.println("Done updating step, " + step.from + ", " + step.to);
    }
 
    public void update() {

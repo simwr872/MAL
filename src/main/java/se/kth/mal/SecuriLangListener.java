@@ -1,20 +1,14 @@
 package se.kth.mal;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
 
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import se.kth.mal.sLangParser.CategoryDeclarationContext;
 import se.kth.mal.sLangParser.ChildExtensionContext;
+import se.kth.mal.sLangParser.ExpressionContext;
 import se.kth.mal.sLangParser.ExpressionStepContext;
-import se.kth.mal.sLangParser.ImmediateContext;
-import se.kth.mal.sLangParser.NormalContext;
-import se.kth.mal.sLangParser.PreExpressionStepContext;
-import se.kth.mal.sLangParser.SelectContext;
-import se.kth.mal.sLangParser.SetChildContext;
-import se.kth.mal.sLangParser.SetOperationContext;
-import se.kth.mal.sLangParser.SetOperatorContext;
+import se.kth.mal.sLangParser.SetStepContext;
 import se.kth.mal.steps.Connection;
 import se.kth.mal.steps.RecursiveConnection;
 import se.kth.mal.steps.SelectConnection;
@@ -116,97 +110,71 @@ public class SecuriLangListener extends sLangBaseListener {
       }
    }
 
-   @Override
-   public void enterImmediate(ImmediateContext ctx) {
-      // Immediate step of form '-> compromise'
-      Step step = new Step(asset.name, attackStep.name, ctx.Identifier().getText());
-      attackStep.steps.add(step);
+   int level = 0;
+
+   public void inPrint(String... args) {
+      String format = args[0];
+      args[0] = String.join(" ", Collections.nCopies(level, "  "));
+      System.out.printf("%s" + format + "\n", args);
    }
 
    public void parseExpressionStep(List<TerminalNode> identifiers, Step step) {
       String cast = (identifiers.size() > 1 ? identifiers.get(1).getText() : "");
       Connection connection;
       if (transitive) {
-         connection = new RecursiveConnection(identifiers.get(0).getText());
-         System.out.println("Recursive connection, " + connection.field + ", cast, " + cast);
+         return new RecursiveConnection(field);
       }
       else {
-         connection = new Connection(identifiers.get(0).getText(), cast);
-         System.out.println("Normal connection, " + connection.field + ", cast, " + cast);
+         return new Connection(field, cast);
       }
-      if (step.connections.isEmpty()) {
-         connection.previousAsset = asset.name;
-      }
-      step.connections.add(connection);
    }
 
-   public void parseExpressionStep(ExpressionStepContext ctx, Step step) {
-      parseExpressionStep(ctx.Identifier(), step);
-   }
-
-   @Override
-   public void enterNormal(NormalContext ctx) {
-      // Normal step with any amount of steps, may or may not have specified
-      // type.
-      Step step = new Step(asset.name, attackStep.name, ctx.Identifier().getText());
-      for (ExpressionStepContext esc : ctx.expressionStep()) {
-         parseExpressionStep(esc, step);
+   public Connection parseSet(SetStepContext ctx) {
+      inPrint("Step is of type set");
+      String cast = "";
+      if (ctx.Identifier() != null) {
+         cast = ctx.Identifier().getText();
+         inPrint("Step is typed '%s'", cast);
       }
-      attackStep.steps.add(step);
-   }
-
-   public void parseSetOperation(List<PreExpressionStepContext> pre, SetOperationContext ctx, Step step) {
-      // (alpha /\ bravo /\ (charlie[golf] \/ delta)[hotel])[echo].foxtrot
-      // We make sure to always bring whatever was infront of our setoperation,
-      // finally it is prepended before any normal expression steps are
-      // evaluated
-      System.out.println("Parsing set operation");
-      pre.addAll(ctx.preExpressionStep());
-      SelectConnection select = new SelectConnection();
-      select.previousAsset = asset.name;
-      select.cast = (ctx.Identifier() != null ? ctx.Identifier().getText() : "");
-
-      for (SetChildContext scc : ctx.setChild()) {
+      SelectConnection con = new SelectConnection();
+      for (int i = 0; i < ctx.expressionSteps().size(); i++) {
          Step childStep = new Step(asset.name, attackStep.name, "");
-         if (scc.setOperation() != null) {
-            // parse again recusive
-            System.out.println("Set operation contains more another set operation...");
-            // We dont want to modify our pre array
-            List<PreExpressionStepContext> npre = new ArrayList<>();
-            npre.addAll(pre);
-            parseSetOperation(npre, scc.setOperation(), childStep);
+         for (ExpressionStepContext step : ctx.expressionSteps(i).expressionStep()) {
+            childStep.connections.add(parseStep(step));
          }
-         else {
-            // normal
-            System.out.println("Precontextlist");
-            for (PreExpressionStepContext pesc : pre) {
-               parseExpressionStep(pesc.Identifier(), childStep);
-            }
-            System.out.println("childlist");
-            for (ExpressionStepContext esc : scc.expressionStep()) {
-               parseExpressionStep(esc, childStep);
-            }
+         con.steps.add(childStep);
+         if (i < ctx.setOperator().size()) {
+            inPrint("Joined with operator '%s'", ctx.setOperator(i).getText());
+            con.operators.add(ctx.setOperator(i).getText());
          }
-         select.steps.add(childStep);
       }
-      for (SetOperatorContext soc : ctx.setOperator()) {
-         select.operators.add(soc.getText());
+      return con;
+   }
+
+   public Connection parseStep(ExpressionStepContext step) {
+      inPrint("Parsing step '%s'", step.getText());
+      Connection con;
+      level++;
+      if (step.normalStep() != null) {
+         con = parseNormal(step.normalStep());
       }
-      step.connections.add(select);
-      System.out.println("postlist");
-      for (ExpressionStepContext esc : ctx.expressionStep()) {
-         parseExpressionStep(esc, step);
+      else {
+         con = parseSet(step.setStep());
       }
-      System.out.println("COMPLETE");
+      level--;
+      return con;
    }
 
    @Override
-   public void enterSelect(SelectContext ctx) {
-      // Select step, may have any amount of intermediate steps. Select step may
-      // also have type, followed by any amount of normal steps.
-      String attack = ctx.Identifier().getText();
-      Step step = new Step(asset.name, attackStep.name, attack);
-      parseSetOperation(new ArrayList<PreExpressionStepContext>(), ctx.setOperation(), step);
-      attackStep.steps.add(step);
+   public void enterExpression(ExpressionContext ctx) {
+      String reachedStep = ctx.Identifier().getText();
+      Step currentStep = new Step(asset.name, attackStep.name, reachedStep);
+      inPrint("New path from '%s$%s' through '%s' reaching '%s'", asset.name, attackStep.name, ctx.expressionSteps().getText(), reachedStep);
+      level++;
+      for (ExpressionStepContext step : ctx.expressionSteps().expressionStep()) {
+         currentStep.connections.add(parseStep(step));
+      }
+      level--;
+      attackStep.steps.add(currentStep);
    }
 }

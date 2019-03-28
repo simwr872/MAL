@@ -149,33 +149,34 @@ attackStepType
 	;
 
 expression
-    :   Identifier #immediate
-    |   (expressionStep '.' )+ Identifier #normal
-    |   setOperation '.' Identifier #select
+    :   (expressionSteps '.')? Identifier
+    ;
+    
+expressionSteps
+    :   expressionStep ('.' expressionStep)*
     ;
 
 expressionStep
-    :   Identifier ('[' Identifier ']')? transitiveOperator?
+    :   normalStep
+    |   setStep
     ;
 
-transitiveOperator
-	:	'+'
-	;
-
-expressionChild
-    :   expressionStep ('.' expressionStep)*
+normalStep
+    :   Identifier ('[' Identifier ']')? transitiveSign?
     ;
-    
+
+transitiveSign
+    :   '+'
+    ;
+
+setStep
+    :   '(' expressionSteps (setOperator expressionSteps)+ ')' ('[' Identifier ']')?
+    ;
+
 setOperator
     :   '/\\'
     |   '\\/'
     ;
-	
-
-setChild
-	:	expressionStep ('.' expressionStep)*
-	|	setOperation
-	;
 
 expressionStep
     :   Identifier ('[' Identifier ']')?
