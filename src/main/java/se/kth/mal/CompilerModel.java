@@ -220,6 +220,10 @@ public class CompilerModel {
    }
 
    public Association getConnectedAssociation(String leftAssetName, String rightRoleName) {
+      return getConnectedAssociation(leftAssetName, rightRoleName, null);
+   }
+
+   public Association getConnectedAssociation(String leftAssetName, String rightRoleName, Connection connection) {
       for (Association association : this.associations) {
          if (association.leftAssetName.equals(leftAssetName) && association.rightRoleName.equals(rightRoleName)) {
             return association;
@@ -233,9 +237,11 @@ public class CompilerModel {
       if (!leftAsset.superAssetName.isEmpty()) {
          System.out.println(String.format("No association from asset '%s' to field [%s]", leftAssetName, rightRoleName));
          System.out.println(String.format("  Checking extended parent '%s' to field [%s]", leftAsset.superAssetName, rightRoleName));
-         return getConnectedAssociation(leftAsset.superAssetName, rightRoleName);
+         return getConnectedAssociation(leftAsset.superAssetName, rightRoleName, connection);
       }
-
+      if (connection != null) {
+         connection.debug.print();
+      }
       throw new Error(String.format("No association from asset '%s' to field [%s]", leftAssetName, rightRoleName));
    }
 
@@ -301,7 +307,7 @@ public class CompilerModel {
          if (!(connection instanceof SelectConnection)) {
             // Normal step
             System.out.println(connection.field);
-            Association association = getConnectedAssociation(connection.previousAsset, connection.field);
+            Association association = getConnectedAssociation(connection.previousAsset, connection.field, connection);
             boolean previousAssetLeft = isLeftAsset(association, connection.previousAsset);
             connection.associationUpdate(association, previousAssetLeft);
          }
@@ -319,7 +325,9 @@ public class CompilerModel {
                   asset = child.getTargetAsset();
                }
                else if (!child.getTargetAsset().equals(asset)) {
-                  throw new Error(String.format("Different set type on index %d; %s =/= %s", i, child.getTargetAsset(), asset));
+                  ((SelectConnection) connection).debug.print();
+                  child.debug.print();
+                  throw new Error(String.format("Different set type; %s =/= %s", child.getTargetAsset(), asset));
                }
             }
             ((SelectConnection) connection).update();

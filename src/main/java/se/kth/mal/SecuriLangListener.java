@@ -2,14 +2,17 @@ package se.kth.mal;
 
 import java.util.Collections;
 
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import se.kth.mal.sLangParser.CategoryDeclarationContext;
 import se.kth.mal.sLangParser.ChildExtensionContext;
 import se.kth.mal.sLangParser.ExpressionContext;
 import se.kth.mal.sLangParser.ExpressionStepContext;
+import se.kth.mal.sLangParser.NormalStepContext;
 import se.kth.mal.sLangParser.SetStepContext;
 import se.kth.mal.steps.Connection;
+import se.kth.mal.steps.DebugInfo;
 import se.kth.mal.steps.RecursiveConnection;
 import se.kth.mal.steps.SelectConnection;
 import se.kth.mal.steps.Step;
@@ -118,9 +121,23 @@ public class SecuriLangListener extends sLangBaseListener {
       System.out.printf("%s" + format + "\n", args);
    }
 
-   public void parseExpressionStep(List<TerminalNode> identifiers, Step step) {
-      String cast = (identifiers.size() > 1 ? identifiers.get(1).getText() : "");
-      Connection connection;
+   public DebugInfo debug(ParserRuleContext ctx) {
+      return new DebugInfo(ctx.getText(), ctx.getStart().getLine(), ctx.getStart().getCharPositionInLine(), ctx.getStop().getLine(), ctx.getStop().getCharPositionInLine());
+   }
+
+   public Connection parseNormal(NormalStepContext ctx) {
+      inPrint("Step is of type normal");
+      String field = ctx.Identifier(0).getText();
+      String cast = "";
+      boolean transitive = false;
+      if (ctx.Identifier().size() == 2) {
+         cast = ctx.Identifier(1).getText();
+         inPrint("Step is typed '%s'", cast);
+      }
+      if (ctx.transitiveSign() != null) {
+         transitive = true;
+         inPrint("Step is transitive");
+      }
       if (transitive) {
          return new RecursiveConnection(field);
       }
@@ -139,6 +156,7 @@ public class SecuriLangListener extends sLangBaseListener {
       SelectConnection con = new SelectConnection();
       for (int i = 0; i < ctx.expressionSteps().size(); i++) {
          Step childStep = new Step(asset.name, attackStep.name, "");
+         childStep.debug = debug(ctx.expressionSteps(i));
          for (ExpressionStepContext step : ctx.expressionSteps(i).expressionStep()) {
             childStep.connections.add(parseStep(step));
          }
@@ -162,6 +180,7 @@ public class SecuriLangListener extends sLangBaseListener {
          con = parseSet(step.setStep());
       }
       level--;
+      con.debug = debug(step);
       return con;
    }
 
@@ -175,6 +194,7 @@ public class SecuriLangListener extends sLangBaseListener {
          currentStep.connections.add(parseStep(step));
       }
       level--;
+      currentStep.debug = debug(ctx);
       attackStep.steps.add(currentStep);
    }
 }

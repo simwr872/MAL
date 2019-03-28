@@ -13,6 +13,7 @@ public class Step {
    public String           from;
    public List<Connection> connections = new ArrayList<>();
    public String           to;
+   public DebugInfo        debug;
 
    public Step(String asset, String from, String to) {
       this.asset = asset;
