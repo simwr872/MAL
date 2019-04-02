@@ -69,8 +69,12 @@ public class SecuriCADCodeGenerator {
       }
 
       File outPut = new File(javaFolder);
-      if (!outPut.exists() || !outPut.isDirectory()) {
-         throw new IllegalArgumentException("Bad output folder path");
+      if (outPut.exists() && !outPut.isDirectory()) {
+         throw new IllegalArgumentException("\"" + javaFolder + "\" is not a directory");
+      } else if (!outPut.exists()) {
+        if (!outPut.mkdirs()) {
+          throw new IllegalArgumentException("Couldn't create directory \"" + javaFolder + "\"");
+        }
       }
 
       if (testCasesFolder != null && !testCasesFolder.equals("")) {
