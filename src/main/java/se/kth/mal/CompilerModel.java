@@ -8,10 +8,16 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -34,6 +40,8 @@ public class CompilerModel {
 
       String fileWithIncludesPath = includeIncludes(securiLangFolder, securiLangFile);
 
+      preprocess(fileWithIncludesPath);
+
       InputStream is = System.in;
       if (securiLangFile != null) {
          System.out.println("Reading from " + fileWithIncludesPath);
@@ -51,6 +59,56 @@ public class CompilerModel {
       sLangListener extractor = new SecuriLangListener(this);
       walker.walk(extractor, tree); // initiate walk of tree with listener
       update();
+   }
+
+   private void preprocess(String path) {
+      String file = null;
+      try {
+         file = new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
+      }
+      catch (IOException e) {
+         e.printStackTrace();
+      }
+      // LET, local variables. The fact that the variables are local complicates
+      // things a bit. Global variables could just be easily replaced. Local
+      // variables cannot be parsed by antlr since the string representation is
+      // already being dealt with (it is too late). We have to match and extract
+      // attack steps before antlr goes to work and perform a simple string
+      // replace.
+
+      Pattern stepPattern = Pattern.compile("[^-][-+]>([^\\}|&]+)", Pattern.CASE_INSENSITIVE);
+      Pattern varPattern = Pattern.compile("let\\s+([a-z0-9_]+)\\s*=\\s*([^,]+),", Pattern.CASE_INSENSITIVE);
+
+      String master = "";
+
+      Matcher step = stepPattern.matcher(file);
+      while (step.find()) {
+         master += file.substring(0, step.start(1));
+         String append = file.substring(step.end(1), file.length());
+         String text = step.group(1);
+
+         Matcher var = varPattern.matcher(text);
+
+         while (var.find()) {
+            String name = var.group(1);
+            String content = var.group(2);
+            System.out.printf("var '%s' content '%s'\n", name, content);
+            text = text.substring(0, var.start()) + text.substring(var.end(), text.length());
+            // Escape both pattern and replacement. Make sure we only find
+            // occurances that are not contained words.
+            text = text.replaceAll("([^a-z0-9_])" + Pattern.quote(name) + "([^a-z0-9_])", "$1" + Matcher.quoteReplacement(content) + "$2");
+            var = varPattern.matcher(text);
+         }
+         master += text;
+         file = append;
+         step = stepPattern.matcher(file);
+      }
+      try (PrintWriter out = new PrintWriter(path)) {
+         out.println(master + file);
+      }
+      catch (FileNotFoundException e) {
+         e.printStackTrace();
+      }
    }
 
    public List<Asset> getAssets() {
@@ -161,6 +219,10 @@ public class CompilerModel {
    }
 
    public Association getConnectedAssociation(String leftAssetName, String rightRoleName) {
+      return getConnectedAssociation(leftAssetName, rightRoleName, null);
+   }
+
+   public Association getConnectedAssociation(String leftAssetName, String rightRoleName, Connection connection) {
       for (Association association : this.associations) {
          if (association.leftAssetName.equals(leftAssetName) && association.rightRoleName.equals(rightRoleName)) {
             return association;
@@ -174,9 +236,11 @@ public class CompilerModel {
       if (!leftAsset.superAssetName.isEmpty()) {
          System.out.println(String.format("No association from asset '%s' to field [%s]", leftAssetName, rightRoleName));
          System.out.println(String.format("  Checking extended parent '%s' to field [%s]", leftAsset.superAssetName, rightRoleName));
-         return getConnectedAssociation(leftAsset.superAssetName, rightRoleName);
+         return getConnectedAssociation(leftAsset.superAssetName, rightRoleName, connection);
       }
-
+      if (connection != null) {
+         connection.debug.print();
+      }
       throw new Error(String.format("No association from asset '%s' to field [%s]", leftAssetName, rightRoleName));
    }
 
@@ -220,28 +284,57 @@ public class CompilerModel {
     *           Step to be updated.
     */
    void updateStep(Step step) {
-      for (Connection connection : step.connections) {
-         if (connection instanceof SelectConnection) {
-            for (Step childStep : ((SelectConnection) connection).steps) {
-               updateStep(childStep);
-            }
-            String targetAsset = ((SelectConnection) connection).steps.get(0).getTargetAsset();
-            for (int i = 1; i < ((SelectConnection) connection).steps.size(); i++) {
-               String target = ((SelectConnection) connection).steps.get(i).getTargetAsset();
-               if (!target.equals(targetAsset)) {
-                  throw new Error(String.format("Different set type on index %d; %s =/= %s", i, targetAsset, target));
+      // A step is a collection of connections from one assets compromised
+      // attack step to another. At this stage a step only has whatever
+      // attackStep it came from and what asset it came from. Note that this
+      // asset will be incorrect for set operations that are chained. This is
+      // fine however since we will travel down it and update on the fly.
+
+      for (int i = 0; i < step.connections.size(); i++) {
+         // To update a connection we must first verify that it is possible,
+         // then check what asset it is and update the next steps previous
+         // asset.
+         Connection connection = step.connections.get(i);
+         if (i == 0) {
+            // First step would not have a previous asset so we set this to the
+            // steps asset. Usually this is just the parent step but might be an
+            // updated previous value from traversing a chain with a set
+            // operation.
+            connection.previousAsset = step.asset;
+            System.out.println("first child setting asset " + step.asset);
+         }
+         if (!(connection instanceof SelectConnection)) {
+            // Normal step
+            System.out.println(connection.field);
+            Association association = getConnectedAssociation(connection.previousAsset, connection.field, connection);
+            boolean previousAssetLeft = isLeftAsset(association, connection.previousAsset);
+            connection.associationUpdate(association, previousAssetLeft);
+         }
+         else {
+            // We are in a set operation, we can just start updating its child
+            // steps while updating their assets to be the connections previous
+            // asset since this would've changed during parsing.
+            String asset = "";
+            for (int j = 0; j < ((SelectConnection) connection).steps.size(); j++) {
+               Step child = ((SelectConnection) connection).steps.get(j);
+               child.asset = connection.previousAsset;
+               System.out.println("updated set child prev asset " + child.asset);
+               updateStep(child);
+               if (j == 0) {
+                  asset = child.getTargetAsset();
+               }
+               else if (!child.getTargetAsset().equals(asset)) {
+                  ((SelectConnection) connection).debug.print();
+                  child.debug.print();
+                  throw new Error(String.format("Different set type; %s =/= %s", child.getTargetAsset(), asset));
                }
             }
             ((SelectConnection) connection).update();
          }
-         else {
-            Association association = getConnectedAssociation(connection.previousAsset, connection.field);
-            boolean previousAssetLeft = isLeftAsset(association, connection.previousAsset);
-            connection.associationUpdate(association, previousAssetLeft);
-         }
-         int nextIndex = step.connections.indexOf(connection) + 1;
-         if (nextIndex < step.connections.size()) {
-            step.connections.get(nextIndex).previousAsset = connection.getCastedAsset();
+         if (i + 1 < step.connections.size()) {
+            // Update the next steps previous asset
+            step.connections.get(i + 1).previousAsset = connection.getCastedAsset();
+            System.out.println("setting next prev asset " + connection.getCastedAsset());
          }
       }
    }

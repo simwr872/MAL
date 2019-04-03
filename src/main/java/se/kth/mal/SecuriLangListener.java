@@ -1,16 +1,19 @@
 package se.kth.mal;
 
+import java.util.Collections;
+
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import se.kth.mal.sLangParser.CategoryDeclarationContext;
 import se.kth.mal.sLangParser.ChildExtensionContext;
-import se.kth.mal.sLangParser.ExpressionChildContext;
+import se.kth.mal.sLangParser.ExpressionContext;
 import se.kth.mal.sLangParser.ExpressionStepContext;
-import se.kth.mal.sLangParser.ImmediateContext;
-import se.kth.mal.sLangParser.NormalContext;
-import se.kth.mal.sLangParser.SelectContext;
-import se.kth.mal.sLangParser.SetOperatorContext;
+import se.kth.mal.sLangParser.NormalStepContext;
+import se.kth.mal.sLangParser.SetStepContext;
 import se.kth.mal.steps.Connection;
+import se.kth.mal.steps.DebugInfo;
+import se.kth.mal.steps.RecursiveConnection;
 import se.kth.mal.steps.SelectConnection;
 import se.kth.mal.steps.Step;
 
@@ -110,61 +113,93 @@ public class SecuriLangListener extends sLangBaseListener {
       }
    }
 
-   @Override
-   public void enterImmediate(ImmediateContext ctx) {
-      // Immediate step of form '-> compromise'
-      Step step = new Step(asset.name, attackStep.name, ctx.Identifier().getText());
-      attackStep.steps.add(step);
+   int level = 0;
+
+   public void inPrint(String... args) {
+      String format = args[0];
+      args[0] = String.join(" ", Collections.nCopies(level, "  "));
+      System.out.printf("%s" + format + "\n", args);
    }
 
-   @Override
-   public void enterNormal(NormalContext ctx) {
-      // Normal step with any amount of steps, may or may not have specified
-      // type.
-      Step step = new Step(asset.name, attackStep.name, ctx.Identifier().getText());
-      for (ExpressionStepContext esc : ctx.expressionStep()) {
-         String cast = (esc.Identifier().size() > 1 ? esc.Identifier(1).getText() : "");
-         Connection connection = new Connection(esc.Identifier(0).getText(), cast);
-         if (step.connections.isEmpty()) {
-            connection.previousAsset = asset.name;
-         }
-         step.connections.add(connection);
+   public DebugInfo debug(ParserRuleContext ctx) {
+      return new DebugInfo(ctx.getText(), ctx.getStart().getLine(), ctx.getStart().getCharPositionInLine(), ctx.getStop().getLine(), ctx.getStop().getCharPositionInLine());
+   }
+
+   public Connection parseNormal(NormalStepContext ctx) {
+      inPrint("Step is of type normal");
+      String field = ctx.Identifier(0).getText();
+      String cast = "";
+      boolean transitive = false;
+      if (ctx.Identifier().size() == 2) {
+         cast = ctx.Identifier(1).getText();
+         inPrint("Step is typed '%s'", cast);
       }
-      attackStep.steps.add(step);
+      if (ctx.transitiveSign() != null) {
+         transitive = true;
+         inPrint("Step is transitive");
+      }
+      if (transitive) {
+         return new RecursiveConnection(field);
+      }
+      else {
+         return new Connection(field, cast);
+      }
    }
 
-   @Override
-   public void enterSelect(SelectContext ctx) {
-      // Select step, may have any amount of intermediate steps. Select step may
-      // also have type, followed by any amount of normal steps.
-      String attack = (ctx.Identifier().size() > 1 ? ctx.Identifier(1).getText() : ctx.Identifier(0).getText());
-      String cast = (ctx.Identifier().size() > 1 ? ctx.Identifier(0).getText() : "");
-      Step step = new Step(asset.name, attackStep.name, attack);
-      SelectConnection select = new SelectConnection();
-      select.previousAsset = asset.name;
-      select.cast = cast;
-      for (ExpressionChildContext ecc : ctx.expressionChild()) {
+   public Connection parseSet(SetStepContext ctx) {
+      inPrint("Step is of type set");
+      String cast = "";
+      if (ctx.Identifier() != null) {
+         cast = ctx.Identifier().getText();
+         inPrint("Step is typed '%s'", cast);
+      }
+      SelectConnection con = new SelectConnection();
+      for (int i = 0; i < ctx.expressionSteps().size(); i++) {
          Step childStep = new Step(asset.name, attackStep.name, "");
-         for (ExpressionStepContext esc : ecc.expressionStep()) {
-            String _cast = (esc.Identifier().size() > 1 ? esc.Identifier(1).getText() : "");
-            Connection connection = new Connection(esc.Identifier(0).getText(), _cast);
-            if (step.connections.isEmpty()) {
-               connection.previousAsset = asset.name;
-            }
-            childStep.connections.add(connection);
+         childStep.debug = debug(ctx.expressionSteps(i));
+         for (ExpressionStepContext step : ctx.expressionSteps(i).expressionStep()) {
+            childStep.connections.add(parseStep(step));
          }
-         select.steps.add(childStep);
+         con.steps.add(childStep);
+         if (i < ctx.setOperator().size()) {
+            inPrint("Joined with operator '%s'", ctx.setOperator(i).getText());
+            con.operators.add(ctx.setOperator(i).getText());
+         }
       }
-      for (SetOperatorContext soc : ctx.setOperator()) {
-         select.operators.add(soc.getText());
-      }
-      step.connections.add(select);
+      return con;
+   }
 
-      for (ExpressionStepContext esc : ctx.expressionStep()) {
-         String _cast = (esc.Identifier().size() > 1 ? esc.Identifier(1).getText() : "");
-         Connection connection = new Connection(esc.Identifier(0).getText(), _cast);
-         step.connections.add(connection);
+   public Connection parseStep(ExpressionStepContext step) {
+      inPrint("Parsing step '%s'", step.getText());
+      Connection con;
+      level++;
+      if (step.normalStep() != null) {
+         con = parseNormal(step.normalStep());
       }
-      attackStep.steps.add(step);
+      else {
+         con = parseSet(step.setStep());
+      }
+      level--;
+      con.debug = debug(step);
+      return con;
+   }
+
+   @Override
+   public void enterExpression(ExpressionContext ctx) {
+      String reachedStep = ctx.Identifier().getText();
+      Step currentStep = new Step(asset.name, attackStep.name, reachedStep);
+      if (ctx.expressionSteps() != null) {
+         inPrint("New path from '%s$%s' through '%s' reaching '%s'", asset.name, attackStep.name, ctx.expressionSteps().getText(), reachedStep);
+         level++;
+         for (ExpressionStepContext step : ctx.expressionSteps().expressionStep()) {
+            currentStep.connections.add(parseStep(step));
+         }
+         level--;
+      }
+      else {
+         inPrint("New path from '%s$%s' to self reaching '%s'", asset.name, attackStep.name, reachedStep);
+      }
+      currentStep.debug = debug(ctx);
+      attackStep.steps.add(currentStep);
    }
 }

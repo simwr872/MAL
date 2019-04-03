@@ -13,6 +13,7 @@ public class Step {
    public String           from;
    public List<Connection> connections = new ArrayList<>();
    public String           to;
+   public DebugInfo        debug;
 
    public Step(String asset, String from, String to) {
       this.asset = asset;
@@ -55,12 +56,41 @@ public class Step {
     * @return Reversed step
     */
    public Step reverse(String asset) {
+      // Reversing is normally trivial since connections contain fields and
+      // assets that an association has. However, when reversing set operations
+      // we must be careful. As an example, consider;
+      // Echo
+      // | compromise
+      // -> alpha.(charlie.bravo /\ delta.bravo).delta.compromise
+      // Reversing the chain literally (and incorrectly) would yield;
+      // -> delta.(bravo.charlie /\ bravo.delta).alpha
+      // Set operators must have the same type on all operands. Therefore a
+      // simple fix is to swap the step before (if any) with the last steps
+      // inside the set operation;
+      // -> delta.bravo.(charlie.alpha /\ delta.alpha)
+      // The final result require the final fields asset to be the main asset,
+      // aswell as having the previously main asset be the final asset,
+      // resulting in the final expression;
+      // Delta
+      // | compromise
+      // -> bravo.(charlie.alpha /\ delta.alpha).echo.compromise
       Step step = new Step(asset, to, from);
       for (Connection connection : connections) {
          step.connections.add(0, connection.reverse());
       }
       return step;
 
+   }
+
+   public String illustrate() {
+      String str = "";
+      for (int i = 0; i < connections.size(); i++) {
+         str += connections.get(i).illustrate();
+         if (i != connections.size() - 1) {
+            str += ".";
+         }
+      }
+      return str;
    }
 
    /**
@@ -100,8 +130,11 @@ public class Step {
     *           final prefix. True if not.
     */
    public void print(PrintWriter writer, String format, String suffix, boolean endStep) {
+      print(writer, format, "", suffix, endStep);
+   }
+
+   public void print(PrintWriter writer, String format, String prefix, String suffix, boolean endStep) {
       int close = printCast(writer);
-      String prefix = "";
       for (Connection connection : connections) {
          prefix = connection.print(writer, prefix, suffix);
          close += (connection.cast.isEmpty() ? 1 : 2);

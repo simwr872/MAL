@@ -15,21 +15,27 @@ import se.kth.mal.Association;
  * made to traverse back and forth in the links.
  */
 public class Connection {
-   public String previousAsset        = ""; // Previous asset according to the
-                                            // association
-   public String previousCast         = ""; // What the previous asset must be
-                                            // cast as to be valid. Used
-                                            // whenever an asset extends some
-                                            // other asset, but the association
-                                            // is made with the parent asset.
-   public String previousField        = "";
-   public String previousMultiplicity = "";
-   public String asset                = ""; // Asset according to association
-   public String cast                 = ""; // What the asset must be cast to,
-                                            // used at the users discretion
-                                            // using typeof operator.
-   public String field                = "";
-   public String multiplicity         = "";
+   public String    previousAsset        = ""; // Previous asset according to
+                                               // the
+                                               // association
+   public String    previousCast         = ""; // What the previous asset must
+                                               // be
+                                               // cast as to be valid. Used
+                                               // whenever an asset extends some
+                                               // other asset, but the
+                                               // association
+                                               // is made with the parent asset.
+   public String    previousField        = "";
+   public String    previousMultiplicity = "";
+   public String    asset                = ""; // Asset according to association
+   public String    cast                 = ""; // What the asset must be cast
+                                               // to,
+                                               // used at the users discretion
+                                               // using typeof operator.
+   public String    field                = "";
+   public String    multiplicity         = "";
+
+   public DebugInfo debug;
 
    public Connection() {
    }
@@ -136,5 +142,9 @@ public class Connection {
       }
 
       return prefix;
+   }
+
+   public String illustrate() {
+      return field;
    }
 }

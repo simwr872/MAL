@@ -47,7 +47,7 @@ public class SelectConnection extends Connection {
       for (Step step : steps) {
          String set = decapitalize(asset) + "_" + RandomStringUtils.randomAlphabetic(5);
          writer.printf("Set<%s> %s = new HashSet<>();\n", asset, set);
-         step.print(writer, set + ".add(%s);\n", setSuffix, false);
+         step.print(writer, set + ".add(%s);\n", prefix, setSuffix, false);
          sets.add(set);
       }
 
@@ -70,5 +70,17 @@ public class SelectConnection extends Connection {
          prefix = decapitalize(asset) + ".";
       }
       return prefix;
+   }
+
+   @Override
+   public String illustrate() {
+      String str = "(";
+      for (int i = 0; i < steps.size(); i++) {
+         str += steps.get(i).illustrate();
+         if (i < operators.size()) {
+            str += " " + operators.get(i) + " ";
+         }
+      }
+      return str + ")";
    }
 }
