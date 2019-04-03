@@ -356,9 +356,6 @@ public class CompilerModel {
             for (Step step : attackStep.steps) {
                updateStep(step);
                Step parent = step.reverse(step.getTargetAsset());
-               System.err.print("Reversing, ");
-               step.debug.print();
-               System.err.println(parent.illustrate());
                getAsset(step.getTargetAsset()).getAttackStep(step.to).parentSteps.add(parent);
             }
          }
