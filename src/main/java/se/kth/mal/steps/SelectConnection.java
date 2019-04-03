@@ -24,9 +24,6 @@ public class SelectConnection extends Connection {
 
    @Override
    public Connection reverse() {
-      // Reversing a set operation
-      // foxtrot.(alpha.bravo \/ charlie.bravo).delta.compromise
-      // delta.
       SelectConnection connection = new SelectConnection();
       connection.previousAsset = this.asset;
       connection.previousCast = this.cast;

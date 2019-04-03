@@ -76,7 +76,6 @@ public class CompilerModel {
       // attack steps before antlr goes to work and perform a simple string
       // replace.
 
-      // TODO: Not really happy with this
       Pattern stepPattern = Pattern.compile("[^-][-+]>([^\\}|&]+)", Pattern.CASE_INSENSITIVE);
       Pattern varPattern = Pattern.compile("let\\s+([a-z0-9_]+)\\s*=\\s*([^,]+),", Pattern.CASE_INSENSITIVE);
 
