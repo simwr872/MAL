@@ -20,6 +20,7 @@ public class PrintTTCFileTemplate {
       String attackStepName = "";
       String distribution = "";
       while ((line = in.readLine()) != null) {
+         line = line.split("//")[0];
          if (line.split(" ").length > 0) {
             if (line.split(" ")[0].equals("include")) {
                String includedMalFile = line.split(" ")[1];
