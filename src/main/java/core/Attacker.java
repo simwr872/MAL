@@ -68,20 +68,39 @@ public class Attacker {
       Pattern pattern = Pattern.compile("([a-z]+)\\(*([0-9.]+)*,*([0-9.]+)*\\)*", Pattern.CASE_INSENSITIVE);
       Matcher matcher = pattern.matcher(dist);
       matcher.matches();
+      double a = 0;
+      double b = 0;
+      try {
+         a = Double.valueOf(matcher.group(2));
+         b = Double.valueOf(matcher.group(3));
+      } catch(Exception e) {
+      }
       switch (matcher.group(1)) {
-         case "Zero":
-            return AttackStep.oneSecond;
-         case "Infinity":
-            return AttackStep.infinity;
+         case "BernoulliDistribution":
+            return a;
+         case "BinomialDistribution":
+            return a*b;
          case "ExponentialDistribution":
-            return Double.valueOf(matcher.group(2));
+            return 1/a;
          case "GammaDistribution":
-            return Double.valueOf(matcher.group(2)) * Double.valueOf(matcher.group(3));
+            return a/b;
+         case "Infinity":
+            return Double.MAX_VALUE;
+         case "LogNormalDistribution":
+            return Math.exp(a + b/2);
+         case "NormalDistribution":
+            return a;
+         case "ParetoDistribution":
+            return a <= 1 ? Double.MAX_VALUE : a*b / (a-1);
+         case "TruncatedNormalDistribution":
+            return a;
          case "UniformDistribution":
-            return (Double.valueOf(matcher.group(3)) - Double.valueOf(matcher.group(2))) / 2;
+            return (a+b)/2;
+         case "Zero":
+            return 0;
          default:
             System.err.printf("No matching distribution for: %s\n", dist);
-            return AttackStep.oneSecond;
+            return 0;
       }
    }
 
