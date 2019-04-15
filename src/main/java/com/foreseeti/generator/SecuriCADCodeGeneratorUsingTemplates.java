@@ -22,17 +22,8 @@ import se.kth.mal.Asset;
 import se.kth.mal.CompilerModel;
 
 public class SecuriCADCodeGeneratorUsingTemplates extends SecuriCADCodeGenerator {
-   File visualFolder = null;
-
    public SecuriCADCodeGeneratorUsingTemplates(String malFilePath, String testCasesFolder, String javaFolder, String packageName, String visualFolderPath) throws IllegalArgumentException {
-      super(malFilePath, testCasesFolder, javaFolder, packageName);
-
-      if (visualFolderPath != null) {
-         this.visualFolder = new File(visualFolderPath.trim());
-         if (!visualFolder.exists() || !visualFolder.isDirectory()) {
-            throw new IllegalArgumentException("Bad visualization folder path");
-         }
-      }
+      super(malFilePath, testCasesFolder, javaFolder, packageName, visualFolderPath);
    }
 
    private String getVisual(String assetName) {
