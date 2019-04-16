@@ -9,18 +9,25 @@ import static org.junit.Assert.assertTrue;
 //Don't instantiate the attack step in the generalized class but instead in the constructor.
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.batik.transcoder.TranscoderException;
+import org.apache.batik.transcoder.TranscoderInput;
+import org.apache.batik.transcoder.TranscoderOutput;
+import org.apache.batik.transcoder.image.PNGTranscoder;
 
 import se.kth.mal.Asset;
 import se.kth.mal.Association;
@@ -39,6 +46,7 @@ public class SecuriCADCodeGenerator {
    protected CompilerModel model;
    protected String        packageName;
    protected String        javaFolder;
+   protected File          visualFolder = null;
 
    protected Integer       associationIndex;
 
@@ -50,7 +58,7 @@ public class SecuriCADCodeGenerator {
       return packageName.replace('.', File.separatorChar);
    }
 
-   public SecuriCADCodeGenerator(String securiLangFile, String testCasesFolder, String javaFolder, String packageName) throws IllegalArgumentException {
+   public SecuriCADCodeGenerator(String securiLangFile, String testCasesFolder, String javaFolder, String packageName, String visualFolderPath) throws IllegalArgumentException {
       this.securiLangFile = securiLangFile;
       this.testCasesFolder = testCasesFolder;
       this.packageName = packageName;
@@ -85,6 +93,12 @@ public class SecuriCADCodeGenerator {
       }
       this.securiLangFolder = new File(malFile.getAbsolutePath()).getParentFile().getAbsolutePath();
 
+      if (visualFolderPath != null) {
+         this.visualFolder = new File(visualFolderPath.trim());
+         if (!visualFolder.exists() || !visualFolder.isDirectory()) {
+            throw new IllegalArgumentException("Bad visualization folder path");
+         }
+      }
    }
 
    public void generate() throws IOException, IllegalArgumentException {
@@ -169,6 +183,9 @@ public class SecuriCADCodeGenerator {
          printConnectionHelpers(asset);
          printDefaultOverriddenMethods(asset);
          printLocalAttackStepSpecialization(asset);
+         if (visualFolder != null) {
+           printIcons(asset);
+         }
          writer.println("}");
          writer.close();
       }
@@ -564,6 +581,90 @@ public class SecuriCADCodeGenerator {
       writer.println("}");
       writer.println("      public double defaultLocalTtc(BaseSample sample, AttackStep caller)  {return 0.00001157407;}");
       writer.println("}");
+   }
+
+   private String fileToBase64(File file) throws IOException {
+      byte[] fileBytes = Files.readAllBytes(file.toPath());
+      byte[] encodedBytes = Base64.getEncoder().encode(fileBytes);
+      return new String(encodedBytes);
+   }
+
+   private String svgFileToPngBase64(File svgFile) throws TranscoderException {
+      TranscoderInput svgInput = new TranscoderInput(svgFile.toPath().toString());
+      ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+      TranscoderOutput pngOutput = new TranscoderOutput(byteOut);
+      new PNGTranscoder().transcode(svgInput, pngOutput);
+      byte[] pngBytes = byteOut.toByteArray();
+      byte[] encodedBytes = Base64.getEncoder().encode(pngBytes);
+      return new String(encodedBytes);
+   }
+
+   protected void printIcons(Asset asset) {
+      // If there is no visualisation folder, don't print getIcon methods
+      if (visualFolder == null) {
+         return;
+      }
+      // Find files $assetName.{svg,png}
+      String assetName = asset.getName();
+      File svgFile = null;
+      File pngFile = null;
+      for (File file : visualFolder.listFiles()) {
+         int dotIndex = file.getName().lastIndexOf('.');
+         if (dotIndex == -1) {
+            continue;
+         }
+         String fileName = file.getName().substring(0, dotIndex);
+         if (!fileName.equals(assetName)) {
+            continue;
+         }
+         String fileExtension = file.getName().substring(dotIndex + 1);
+         if (fileExtension.equals("svg")) {
+            svgFile = file;
+         } else if (fileExtension.equals("png")) {
+            pngFile = file;
+         }
+      }
+      // If files couldn't be found, don't print getIcon methods
+      if (svgFile == null && pngFile == null) {
+         return;
+      }
+      // Get base64 encoded icons
+      String svgBase64 = null;
+      String pngBase64 = null;
+      if (svgFile != null) {
+         try {
+            svgBase64 = fileToBase64(svgFile);
+         } catch (IOException e) {
+            e.printStackTrace();
+         }
+      }
+      if (pngFile == null) {
+         try {
+            pngBase64 = svgFileToPngBase64(svgFile);
+         } catch (TranscoderException e) {
+            e.printStackTrace();
+         }
+      } else {
+         try {
+            pngBase64 = fileToBase64(svgFile);
+         } catch (IOException e) {
+            e.printStackTrace();
+         }
+      }
+      if (svgBase64 != null) {
+         writer.println("  public static String getIconSVG() {");
+         writer.println("    return \"data:image/svg;base64," + svgBase64 + "\";");
+         writer.println("  }");
+      }
+      if (pngBase64 != null) {
+         writer.println("  public static String getIconPNG() {");
+         writer.println("    return \"data:image/png;base64," + pngBase64 + "\";");
+         writer.println("  }");
+         writer.println("  @Deprecated");
+         writer.println("  public static String getIcon() {");
+         writer.println("    return getIconPNG();");
+         writer.println("  }");
+      }
    }
 
    protected String sprintConstructorWithoutDefenseAttributes(Asset asset, boolean hasName, String constructorString) {

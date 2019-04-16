@@ -19,7 +19,7 @@ public class Master {
       try {
          if (useForeseeti) {
             System.out.println(">>> Using foreseeti backend <<<");
-            SecuriCADCodeGenerator generator = new SecuriCADCodeGenerator(malFilePath, testsOutFolderPath, javaOutFolderPath, packageName);
+            SecuriCADCodeGenerator generator = new SecuriCADCodeGenerator(malFilePath, testsOutFolderPath, javaOutFolderPath, packageName, visualFolderPath);
             generator.generate();
          }
          else {
