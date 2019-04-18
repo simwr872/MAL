@@ -41,14 +41,8 @@ import se.kth.mal.steps.Step;
 // The JavaWriter produces executable Java code for testing purposes.
 public class CompilerWriter {
 
-   PrintWriter          writer;
-   String               securiLangFolder;
-   String               securiLangFile;
-   String               testCasesFolder;
-   String               jsonString = "";
+   PrintWriter writer;
    public CompilerModel model;
-
-   Integer              associationIndex;
 
    private String package2path(String packageName) throws IllegalArgumentException {
       if (!packageName.matches("\\w+(\\.\\w+)*$")) {
@@ -58,17 +52,11 @@ public class CompilerWriter {
       return packageName.replace('.', File.separatorChar);
    }
 
-   public CompilerWriter(String securiLangFolder, String securiLangFile, String testCasesFolder, String javaFolder, String packageName, String jsonFolder)
-         throws IOException, IllegalArgumentException {
-      this.securiLangFolder = securiLangFolder;
-      this.securiLangFile = securiLangFile;
-      this.testCasesFolder = testCasesFolder;
-
-      String packagePath = package2path(packageName);
-      model = new CompilerModel(securiLangFolder, securiLangFile);
-      writeD3(jsonFolder, securiLangFile);
-      writeJava(javaFolder, packageName, packagePath);
-      PrintTTCFileTemplate.writeTTCConfigFile(jsonFolder + "/attackerProfile.ttc", securiLangFolder, securiLangFile);
+   public CompilerWriter(File input, File output, String packageName) {
+      this.model = new CompilerModel(input);
+      String name = input.getName().replaceFirst("\\.[^.]+$", ""); // strip .mal
+      writeD3(output, name);
+      writeJava(output, packageName);
    }
 
    private String capitalize(final String line) {
@@ -77,22 +65,6 @@ public class CompilerWriter {
 
    private String decapitalize(final String line) {
       return Character.toLowerCase(line.charAt(0)) + line.substring(1);
-   }
-
-   private String readFile(String filePath) throws IOException {
-      String contents;
-      try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-         StringBuilder sb = new StringBuilder();
-         String line = br.readLine();
-
-         while (line != null) {
-            sb.append(line);
-            sb.append(System.lineSeparator());
-            line = br.readLine();
-         }
-         contents = sb.toString();
-      }
-      return contents;
    }
 
    public String d3() {
@@ -147,19 +119,14 @@ public class CompilerWriter {
       return json.build().toString();
    }
 
-   public void writeD3(String outputFolder, String outputFileName) {
+   public void writeD3(File output, String name) {
 
-      // Create the path unless it already exists
-      String path = outputFolder + "/";
-      (new File(path)).mkdirs();
-
-      String ofn = outputFileName.substring(0, outputFileName.lastIndexOf('.'));
-      String outputFile = outputFolder + "/" + ofn + ".html";
+      String outputFile = output.getAbsolutePath() + File.separator + name + ".html";
 
       InputStream is = this.getClass().getClassLoader().getResourceAsStream("visualization.html");
       BufferedReader reader = new BufferedReader(new InputStreamReader(is));
       String content = reader.lines().collect(Collectors.joining(System.lineSeparator()));
-      content = content.replace("{{NAME}}", ofn).replace("{{JSON}}", d3());
+      content = content.replace("{{NAME}}", name).replace("{{JSON}}", d3());
 
       try {
          PrintWriter out = new PrintWriter(outputFile, "UTF-8");
@@ -171,17 +138,15 @@ public class CompilerWriter {
       }
    }
 
-   private void writeCore(String path) {
-      File dst = new File(path);
-      dst.mkdirs();
+   private void writeCore(File output) {
+      output.mkdirs();
 
       ZipInputStream zin = new ZipInputStream(this.getClass().getResourceAsStream("/core.zip"));
       ZipEntry entry;
       try {
          while ((entry = zin.getNextEntry()) != null) {
-            System.out.printf("Writing core/%s\n", entry.getName());
             byte[] buf = new byte[1024];
-            FileOutputStream fos = new FileOutputStream(path + "/" + entry.getName());
+            FileOutputStream fos = new FileOutputStream(new File(output, entry.getName()));
             int i = -1;
             while ((i = zin.read(buf)) != -1) {
                fos.write(buf, 0, i);
@@ -195,20 +160,16 @@ public class CompilerWriter {
       }
    }
 
-   private void writeJava(String outputFolder, String packageName, String packagePath) {
+   private void writeJava(File output, String packageName) {
+      writeCore(new File(output, "core"));
 
-      // Create the path unless it already exists
-      String path = outputFolder + "/" + packagePath + "/";
-      (new File(path)).mkdirs();
-
-      System.out.println("Writing core");
-      writeCore(outputFolder + "/core");
+      File out = new File(output, packageName);
+      out.mkdirs();
 
       for (Asset asset : model.getAssets()) {
-         System.out.println("Writing the Java class corresponding to asset " + asset.name);
-         String sourceCodeFile = path + asset.name + ".java";
+         File file = new File(out, asset.name + ".java");
          try {
-            writer = new PrintWriter(sourceCodeFile, "UTF-8");
+            writer = new PrintWriter(file.getAbsolutePath(), "UTF-8");
             printPackage(packageName);
             printImports();
             printAssetClassHeaders(asset);
@@ -671,190 +632,6 @@ public class CompilerWriter {
       }
       writer.println("      return assets;");
       writer.println("   }");
-   }
-
-   private void writeToJsonStringln(String s) {
-      jsonString = jsonString + s + "\n";
-   }
-
-   private void backtrackJsonString() {
-      jsonString = jsonString.substring(0, jsonString.length() - 2) + "\n";
-   }
-
-   public Set<String> listFilesForFolder(final File folder) {
-      Set<String> testClassNames = new HashSet<>();
-      for (final File fileEntry : folder.listFiles()) {
-         if (fileEntry.isDirectory()) {
-            listFilesForFolder(fileEntry);
-         }
-         else {
-            if (fileEntry.getName().indexOf(".csv") != -1) {
-               testClassNames.add(fileEntry.getName().split("\\.")[0]);
-            }
-         }
-      }
-      return testClassNames;
-   }
-
-   private void writeTestCases(String securiLangFolderPath) {
-
-      final File folder = new File(securiLangFolderPath + "/testCases/");
-      Set<String> testClassNames = listFilesForFolder(folder);
-      for (String testClassName : testClassNames) {
-         Set<TestingCase> testingCases = new HashSet<>();
-         readTestCaseFile(securiLangFolderPath, testClassName, testingCases);
-         writeTests(securiLangFolderPath, testClassName, testingCases);
-      }
-      writeTestRunner(securiLangFolderPath);
-   }
-
-   protected void readTestCaseFile(String securiLangFolderPath, String fileName, Set<TestingCase> testingCases) {
-      try {
-         String testFile = readFile(securiLangFolderPath + "/testCases/" + fileName + ".csv");
-         String[] rows = testFile.split("\n");
-         int nRows = rows.length;
-         int nCols = rows[0].split(";").length;
-         String[][] matrix = new String[nRows][nCols];
-         for (int iRow = 0; iRow < nRows; iRow++) {
-            String[] words = rows[iRow].split(";");
-            for (int iCol = 0; iCol < nCols; iCol++) {
-               matrix[iRow][iCol] = words[iCol];
-            }
-            List<String> newValues = new ArrayList<>();
-            for (int iWord = 2; iWord < words.length; iWord++) {
-               newValues.add(words[iWord]);
-            }
-         }
-
-         for (int iCol = 3; iCol < nCols; iCol++) {
-            TestingCase testingCase = new TestingCase();
-            for (int iRow = 0; iRow < nRows; iRow++) {
-               AttackStepName attackPoint = new AttackStepName();
-               attackPoint.assetName = matrix[iRow][1].toLowerCase();
-               testingCase.assetNames.add(matrix[iRow][1]);
-               attackPoint.attackStepName = matrix[iRow][2];
-               if (matrix[iRow][0].equals("attackStep")) {
-                  if (matrix[iRow][iCol].equals("entryPoint")) {
-                     testingCase.attackPointNames.add(attackPoint);
-                  }
-                  if (matrix[iRow][iCol].equals("infinity")) {
-                     testingCase.attackStepStates.put(attackPoint, " == AttackStep.infinity");
-                  }
-                  if (matrix[iRow][iCol].equals("lessThanADay")) {
-                     testingCase.attackStepStates.put(attackPoint, " < 1");
-                  }
-               }
-               if (matrix[iRow][0].equals("defenseStep")) {
-                  testingCase.defenseStepStates.put(attackPoint, matrix[iRow][iCol]);
-               }
-            }
-            testingCases.add(testingCase);
-         }
-      }
-      catch (IOException e) {
-         // TODO Auto-generated catch block
-         e.printStackTrace();
-      }
-   }
-
-   protected void writeTests(String javaFolderPath, String testCaseName, Set<TestingCase> testingCases) {
-
-      // Doing it wrong:
-
-      String testCodeFile = javaFolderPath + "/autoLang/test/test" + testCaseName + ".java";
-      try {
-         writer = new PrintWriter(testCodeFile, "UTF-8");
-         writer.println("import static org.junit.Assert.assertTrue;");
-
-         writer.println("import org.junit.Test;");
-         writer.println("");
-         writer.println("public class test" + testCaseName + " {");
-         writer.println("");
-         Integer iCase = 0;
-         for (TestingCase testingCase : testingCases) {
-            iCase++;
-            writer.println("   @Test");
-            writer.println("   public void test" + iCase.toString() + "() {");
-            for (String assetName : testingCase.assetNames) {
-               writer.println("      " + assetName + " " + assetName.toLowerCase() + " = new " + assetName + "();");
-            }
-            for (Map.Entry<AttackStepName, String> entry : testingCase.defenseStepStates.entrySet()) {
-               AttackStepName defenseStepName = entry.getKey();
-               String defenseStepState = entry.getValue();
-               writer.println("      " + defenseStepName.assetName.toLowerCase() + "." + defenseStepName.attackStepName + ".defaultValue = " + defenseStepState + ";");
-            }
-            writer.println("");
-            writer.println("      Attacker attacker = new Attacker();");
-            for (AttackStepName attackPointName : testingCase.attackPointNames) {
-               writer.println("      attacker.addAttackPoint(" + attackPointName.assetName.toLowerCase() + "." + attackPointName.attackStepName + ");");
-            }
-            writer.println("      attacker.attack();");
-            writer.println("");
-            // writer.println(" Support.explain(" + asset.name.toLowerCase() +
-            // ".accessLayer2, \"\");");
-            for (Map.Entry<AttackStepName, String> entry : testingCase.attackStepStates.entrySet()) {
-               AttackStepName attackStepName = entry.getKey();
-               String attackStepState = entry.getValue();
-               writer.println("      assertTrue(" + attackStepName.assetName.toLowerCase() + "." + attackStepName.attackStepName + ".ttc" + attackStepState + ");");
-            }
-            writer.println("   }");
-         }
-         writer.println("");
-         writer.println("}");
-         writer.close();
-
-      }
-      catch (FileNotFoundException e) {
-         System.out.println("FileNotFoundException");
-         e.printStackTrace();
-      }
-      catch (UnsupportedEncodingException e) {
-         System.out.println("UnsupportedEncodingException");
-         e.printStackTrace();
-      }
-
-   }
-
-   protected void writeTestRunner(String javaFolderPath) {
-
-      String testCodeFile = javaFolderPath + "/autoLang/test/TestRunner.java";
-      try {
-         writer = new PrintWriter(testCodeFile, "UTF-8");
-         writer.println("import org.junit.runner.JUnitCore;\nimport org.junit.runner.Result;\nimport org.junit.runner.notification.Failure;\n");
-         writer.print("public class TestRunner {\n   public static void main(String[] args) {\n      Result result = JUnitCore.runClasses(");
-         // writer.print("testNetwork.class");
-         writer.println(
-               ");\n\n      for (Failure failure : result.getFailures()) {\n         System.out.println(failure.toString());\n      }\n\n      System.out.println(\"Executed \" + result.getRunCount() + \" cases.\");");
-         writer.println(
-               "       if (result.wasSuccessful()) {\n         System.out.println(\"All were successful.\");\n      }\n      else {\n         System.out.println(\"Some failed.\");\n      }\n\n   }\n}");
-         writer.close();
-
-      }
-      catch (FileNotFoundException e) {
-         System.out.println("FileNotFoundException");
-         e.printStackTrace();
-      }
-      catch (UnsupportedEncodingException e) {
-         System.out.println("UnsupportedEncodingException");
-         e.printStackTrace();
-      }
-
-   }
-
-   class AttackStepName {
-      String assetName;
-      String attackStepName;
-
-      String attackPointName() {
-         return assetName + "." + attackStepName;
-      }
-   }
-
-   class TestingCase {
-      Set<String>                 assetNames        = new HashSet<>();
-      Set<AttackStepName>         attackPointNames  = new HashSet<>();
-      Map<AttackStepName, String> defenseStepStates = new HashMap<>();
-      Map<AttackStepName, String> attackStepStates  = new HashMap<>();
    }
 
 }

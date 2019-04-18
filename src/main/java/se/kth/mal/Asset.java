@@ -12,7 +12,7 @@ public class Asset {
    public String    name;
    String           info;
    String           rationale;
-   String           category                    = "NoCategoryName";
+   public String           category                    = "NoCategoryName";
    String           superAssetName              = "";
    Integer          nDefenses                   = 0;
    List<AttackStep> attackSteps                 = new ArrayList<>();

@@ -58,6 +58,17 @@ public class SecuriCADCodeGenerator {
       return packageName.replace('.', File.separatorChar);
    }
 
+   public SecuriCADCodeGenerator(File input, File output, String packageName, File iconPath) {
+      String packagePath = package2path(packageName);
+      model = new CompilerModel(input);
+      try {
+         writeJava(output.getAbsolutePath(), packageName, packagePath);
+      }
+      catch (IOException e) {
+         e.printStackTrace();
+      }
+   }
+
    public SecuriCADCodeGenerator(String securiLangFile, String testCasesFolder, String javaFolder, String packageName, String visualFolderPath) throws IllegalArgumentException {
       this.securiLangFile = securiLangFile;
       this.testCasesFolder = testCasesFolder;
@@ -101,11 +112,6 @@ public class SecuriCADCodeGenerator {
       }
    }
 
-   public void generate() throws IOException, IllegalArgumentException {
-      String packagePath = package2path(packageName);
-      model = new CompilerModel(securiLangFolder, new File(securiLangFile).getName());
-      writeJava(javaFolder, packageName, packagePath);
-   }
 
    private String capitalize(final String line) {
       return Character.toUpperCase(line.charAt(0)) + line.substring(1);
@@ -477,12 +483,6 @@ public class SecuriCADCodeGenerator {
       printInitAttackStepsWithDefault(asset);
    }
 
-   protected void generateGetConnectionErrors() {
-      writer.println("public String getConnectionValidationErrors(String sourceFieldName, FClass target, String targetFieldName) {");
-      writer.println("	   return null");
-      writer.println("}");
-   }
-
    protected void printDefaultConstructors(Asset asset) {
       List<AttackStep> defensesExcludingExistenceRequirements = asset.defensesExcludingExistenceRequirements();
       String immutable_attacks = "";
@@ -665,105 +665,6 @@ public class SecuriCADCodeGenerator {
          writer.println("    return getIconPNG();");
          writer.println("  }");
       }
-   }
-
-   protected String sprintConstructorWithoutDefenseAttributes(Asset asset, boolean hasName, String constructorString) {
-      if (!asset.defensesExcludingExistenceRequirements().isEmpty()) {
-         constructorString += "   public " + capitalize(asset.getName()) + "(";
-         if (hasName) {
-            constructorString += "String name";
-         }
-         constructorString += ") {\n";
-         constructorString += "      this(";
-         if (hasName) {
-            constructorString += "name, ";
-         }
-
-         for (AttackStep defense : asset.defensesExcludingExistenceRequirements()) {
-            constructorString += "false, ";
-         }
-         constructorString = constructorString.substring(0, constructorString.length() - 2);
-         constructorString += ");\n";
-         constructorString += "      assetClassName = \"" + asset.getName() + "\";\n   }\n\n";
-      }
-      return constructorString;
-   }
-
-   protected String sprintConstructorWithDefenseAttributes(Asset asset, boolean hasName, String constructorString) {
-      constructorString += "   public " + capitalize(asset.getName()) + "(";
-      if (hasName) {
-         constructorString += "String name";
-         if (!asset.defensesExcludingExistenceRequirements().isEmpty()) {
-            constructorString += ", ";
-         }
-      }
-      constructorString = sprintDefenseAttributes(asset, constructorString);
-      constructorString += ") {\n";
-      constructorString = sprintSuperCall(asset, hasName, constructorString);
-      constructorString = sprintStepCreation(asset, constructorString);
-      constructorString += "      assetClassName = \"" + asset.getName() + "\";\n   }\n\n";
-      return constructorString;
-   }
-
-   protected String sprintSuperCall(Asset asset, boolean hasName, String constructorString) {
-      constructorString += "      super(";
-      Asset superAsset = null;
-      if (!asset.getSuperAssetName().equals("")) {
-         superAsset = model.getAsset(asset.getSuperAssetName());
-      }
-      if (hasName) {
-         constructorString += "name";
-         if (!asset.getSuperAssetName().equals("")) {
-            if (!superAsset.defensesExcludingExistenceRequirements().isEmpty()) {
-               constructorString += ", ";
-            }
-         }
-      }
-      if (!asset.getSuperAssetName().equals("")) {
-         for (AttackStep defense : superAsset.defensesExcludingExistenceRequirements()) {
-            constructorString += defense.getName() + "State, ";
-         }
-         if (!superAsset.defensesExcludingExistenceRequirements().isEmpty()) {
-            constructorString = constructorString.substring(0, constructorString.length() - 2);
-         }
-      }
-
-      constructorString += ");\n";
-      return constructorString;
-   }
-
-   protected String sprintDefenseAttributes(Asset asset, String constructorString) {
-      String attributesString = "";
-      if (!asset.defensesExcludingExistenceRequirements().isEmpty()) {
-         for (AttackStep defense : asset.defensesExcludingExistenceRequirements()) {
-            attributesString += "Boolean " + defense.getName() + "State, ";
-         }
-         if (attributesString.length() > 0) {
-            attributesString = attributesString.substring(0, attributesString.length() - 2);
-         }
-      }
-      return constructorString + attributesString;
-   }
-
-   protected String sprintStepCreation(Asset asset, String constructorString) {
-      for (AttackStep defense : asset.defenses()) {
-         constructorString += "      if (" + defense.getName() + " != null) {\n";
-         constructorString += "         AttackStep.allAttackSteps.remove(" + defense.getName() + ".disable);\n";
-         constructorString += "      }\n";
-         constructorString += "      Defense.allDefenses.remove(" + defense.getName() + ");\n";
-         constructorString += "      " + defense.getName() + " = new " + capitalize(defense.getName()) + "(this.name";
-         if (!defense.hasExistenceRequirements()) {
-            constructorString += ", " + defense.getName() + "State";
-         }
-         constructorString += ");\n";
-      }
-      for (AttackStep attackStep : asset.getAttackSteps()) {
-         if (!asset.defenses().contains(attackStep)) {
-            constructorString += "      AttackStep.allAttackSteps.remove(" + attackStep.getName() + ");\n";
-            constructorString += "      " + attackStep.getName() + " = new " + capitalize(attackStep.getName()) + "(this.name);\n";
-         }
-      }
-      return constructorString;
    }
 
    void printStepDefinitions(Asset asset) {
@@ -975,247 +876,6 @@ public class SecuriCADCodeGenerator {
                   association.getRightRoleName()));
          }
       }
-   }
-
-   void printGetAssociatedAssetClassName(Asset asset) {
-      writer.println("   @Override");
-      writer.println("   public String getAssociatedAssetClassName(String roleName) {");
-      for (Association association : asset.getAssociations()) {
-         writer.println("      if (roleName.equals(\"" + association.getTargetRoleName(asset) + "\")) {");
-         if (association.targetMultiplicity(asset).equals("*") || association.targetMultiplicity(asset).equals("1-*")) {
-            writer.println("         for (Object o: " + association.getTargetRoleName(asset) + ") {");
-            writer.println("            return o.getClass().getName();");
-            writer.println("         }");
-         }
-         else {
-            writer.println("         return " + association.getTargetRoleName(asset) + ".getClass().getName();");
-         }
-         writer.println("      }");
-      }
-      writer.println("      return null;");
-      writer.println("   }");
-   }
-
-   void printGetAssociatedAssets(Asset asset) {
-      writer.println("   @Override");
-      writer.println("   public Set<Asset> getAssociatedAssets(String roleName) {");
-      writer.println("      AnySet<Asset> assets = new AnySet<>();");
-      for (Association association : asset.getAssociationsIncludingInherited()) {
-         writer.println(
-               "      if (roleName.equals(\"" + association.getTargetRoleNameIncludingInheritance(asset) + "\")  && " + association.getTargetRoleNameIncludingInheritance(asset) + " != null) {");
-         if (association.targetMultiplicityIncludingInheritance(asset).equals("*") || association.targetMultiplicityIncludingInheritance(asset).equals("1-*")) {
-            writer.println("         assets.addAll(" + association.getTargetRoleNameIncludingInheritance(asset) + ");");
-         }
-         else {
-            writer.println("         assets.add(" + association.getTargetRoleNameIncludingInheritance(asset) + ");");
-         }
-         writer.println("         return assets;");
-         writer.println("      }");
-      }
-      writer.println("      assertTrue(\"The asset \" + this.toString() + \" does not feature the role name \" + roleName + \".\", false);");
-      writer.println("      return null;");
-      writer.println("   }");
-   }
-
-   void printGetAllAssociatedAssets(Asset asset) {
-      writer.println("   @Override");
-      writer.println("   public Set<Asset> getAllAssociatedAssets() {");
-      writer.println("      AnySet<Asset> assets = new AnySet<>();");
-      for (Association association : asset.getAssociationsIncludingInherited()) {
-         if (association.targetMultiplicityIncludingInheritance(asset).equals("*") || association.targetMultiplicityIncludingInheritance(asset).equals("1-*")) {
-            writer.println("      assets.addAll(" + association.getTargetRoleNameIncludingInheritance(asset) + ");");
-         }
-         else {
-            writer.println("      if (" + association.getTargetRoleNameIncludingInheritance(asset) + " != null) {");
-            writer.println("         assets.add(" + association.getTargetRoleNameIncludingInheritance(asset) + ");");
-            writer.println("      }");
-         }
-      }
-      writer.println("      return assets;");
-      writer.println("   }");
-   }
-
-   private void writeToJsonStringln(String s) {
-      jsonString = jsonString + s + "\n";
-   }
-
-   private void backtrackJsonString() {
-      jsonString = jsonString.substring(0, jsonString.length() - 2) + "\n";
-   }
-
-   public Set<String> listFilesForFolder(final File folder) {
-      Set<String> testClassNames = new HashSet<>();
-      for (final File fileEntry : folder.listFiles()) {
-         if (fileEntry.isDirectory()) {
-            listFilesForFolder(fileEntry);
-         }
-         else {
-            if (fileEntry.getName().indexOf(".csv") != -1) {
-               testClassNames.add(fileEntry.getName().split("\\.")[0]);
-            }
-         }
-      }
-      return testClassNames;
-   }
-
-   private void writeTestCases(String securiLangFolderPath) {
-
-      final File folder = new File(securiLangFolderPath + "/testCases/");
-      Set<String> testClassNames = listFilesForFolder(folder);
-      for (String testClassName : testClassNames) {
-         Set<TestingCase> testingCases = new HashSet<>();
-         readTestCaseFile(securiLangFolderPath, testClassName, testingCases);
-         writeTests(securiLangFolderPath, testClassName, testingCases);
-      }
-      writeTestRunner(securiLangFolderPath);
-   }
-
-   protected void readTestCaseFile(String securiLangFolderPath, String fileName, Set<TestingCase> testingCases) {
-      try {
-         String testFile = readFile(securiLangFolderPath + "/testCases/" + fileName + ".csv");
-         String[] rows = testFile.split("\n");
-         int nRows = rows.length;
-         int nCols = rows[0].split(";").length;
-         String[][] matrix = new String[nRows][nCols];
-         for (int iRow = 0; iRow < nRows; iRow++) {
-            String[] words = rows[iRow].split(";");
-            for (int iCol = 0; iCol < nCols; iCol++) {
-               matrix[iRow][iCol] = words[iCol];
-            }
-            List<String> newValues = new ArrayList<>();
-            for (int iWord = 2; iWord < words.length; iWord++) {
-               newValues.add(words[iWord]);
-            }
-         }
-
-         for (int iCol = 3; iCol < nCols; iCol++) {
-            TestingCase testingCase = new TestingCase();
-            for (int iRow = 0; iRow < nRows; iRow++) {
-               AttackStepName attackPoint = new AttackStepName();
-               attackPoint.assetName = matrix[iRow][1].toLowerCase();
-               testingCase.assetNames.add(matrix[iRow][1]);
-               attackPoint.attackStepName = matrix[iRow][2];
-               if (matrix[iRow][0].equals("attackStep")) {
-                  if (matrix[iRow][iCol].equals("entryPoint")) {
-                     testingCase.attackPointNames.add(attackPoint);
-                  }
-                  if (matrix[iRow][iCol].equals("infinity")) {
-                     testingCase.attackStepStates.put(attackPoint, " == AttackStep.infinity");
-                  }
-                  if (matrix[iRow][iCol].equals("lessThanADay")) {
-                     testingCase.attackStepStates.put(attackPoint, " < 1");
-                  }
-               }
-               if (matrix[iRow][0].equals("defenseStep")) {
-                  testingCase.defenseStepStates.put(attackPoint, matrix[iRow][iCol]);
-               }
-            }
-            testingCases.add(testingCase);
-         }
-      }
-      catch (IOException e) {
-         // TODO Auto-generated catch block
-         e.printStackTrace();
-      }
-   }
-
-   protected void writeTests(String javaFolderPath, String testCaseName, Set<TestingCase> testingCases) {
-
-      // Doing it wrong:
-
-      String testCodeFile = javaFolderPath + "/autoLang/test/test" + testCaseName + ".java";
-      try {
-         writer = new PrintWriter(testCodeFile, "UTF-8");
-         writer.println("import static org.junit.Assert.assertTrue;");
-
-         writer.println("import org.junit.Test;");
-         writer.println("");
-         writer.println("public class test" + testCaseName + " {");
-         writer.println("");
-         Integer iCase = 0;
-         for (TestingCase testingCase : testingCases) {
-            iCase++;
-            writer.println("   @Test");
-            writer.println("   public void test" + iCase.toString() + "() {");
-            for (String assetName : testingCase.assetNames) {
-               writer.println("      " + assetName + " " + assetName.toLowerCase() + " = new " + assetName + "();");
-            }
-            for (Map.Entry<AttackStepName, String> entry : testingCase.defenseStepStates.entrySet()) {
-               AttackStepName defenseStepName = entry.getKey();
-               String defenseStepState = entry.getValue();
-               writer.println("      " + defenseStepName.assetName.toLowerCase() + "." + defenseStepName.attackStepName + ".defaultValue = " + defenseStepState + ";");
-            }
-            writer.println("");
-            writer.println("      Attacker attacker = new Attacker();");
-            for (AttackStepName attackPointName : testingCase.attackPointNames) {
-               writer.println("      attacker.addAttackPoint(" + attackPointName.assetName.toLowerCase() + "." + attackPointName.attackStepName + ");");
-            }
-            writer.println("      attacker.attack();");
-            writer.println("");
-
-            for (Map.Entry<AttackStepName, String> entry : testingCase.attackStepStates.entrySet()) {
-               AttackStepName attackStepName = entry.getKey();
-               String attackStepState = entry.getValue();
-               writer.println("      assertTrue(" + attackStepName.assetName.toLowerCase() + "." + attackStepName.attackStepName + ".ttc" + attackStepState + ");");
-            }
-            writer.println("   }");
-         }
-         writer.println("");
-         writer.println("}");
-         writer.close();
-
-      }
-      catch (FileNotFoundException e) {
-         System.out.println("FileNotFoundException");
-         e.printStackTrace();
-      }
-      catch (UnsupportedEncodingException e) {
-         System.out.println("UnsupportedEncodingException");
-         e.printStackTrace();
-      }
-
-   }
-
-   protected void writeTestRunner(String javaFolderPath) {
-
-      String testCodeFile = javaFolderPath + "/autoLang/test/TestRunner.java";
-      try {
-         writer = new PrintWriter(testCodeFile, "UTF-8");
-         writer.println("import org.junit.runner.JUnitCore;\nimport org.junit.runner.Result;\nimport org.junit.runner.notification.Failure;\n");
-         writer.print("public class TestRunner {\n   public static void main(String[] args) {\n      Result result = JUnitCore.runClasses(");
-         // writer.print("testNetwork.class");
-         writer.println(
-               ");\n\n      for (Failure failure : result.getFailures()) {\n         System.out.println(failure.toString());\n      }\n\n      System.out.println(\"Executed \" + result.getRunCount() + \" cases.\");");
-         writer.println(
-               "       if (result.wasSuccessful()) {\n         System.out.println(\"All were successful.\");\n      }\n      else {\n         System.out.println(\"Some failed.\");\n      }\n\n   }\n}");
-         writer.close();
-
-      }
-      catch (FileNotFoundException e) {
-         System.out.println("FileNotFoundException");
-         e.printStackTrace();
-      }
-      catch (UnsupportedEncodingException e) {
-         System.out.println("UnsupportedEncodingException");
-         e.printStackTrace();
-      }
-
-   }
-
-   class AttackStepName {
-      String assetName;
-      String attackStepName;
-
-      String attackPointName() {
-         return assetName + "." + attackStepName;
-      }
-   }
-
-   class TestingCase {
-      Set<String>                 assetNames        = new HashSet<>();
-      Set<AttackStepName>         attackPointNames  = new HashSet<>();
-      Map<AttackStepName, String> defenseStepStates = new HashMap<>();
-      Map<AttackStepName, String> attackStepStates  = new HashMap<>();
    }
 
 }

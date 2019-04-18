@@ -10,6 +10,19 @@ public class RecursiveConnection extends Connection {
       super(field);
    }
 
+   @Override public Connection reverse() {
+      Connection connection = new RecursiveConnection("");
+      connection.previousAsset = this.asset;
+      connection.previousCast = this.cast;
+      connection.previousField = this.field;
+      connection.previousMultiplicity = this.multiplicity;
+      connection.asset = this.previousAsset;
+      connection.cast = this.previousCast;
+      connection.field = this.previousField;
+      connection.multiplicity = this.previousMultiplicity;
+      return connection;
+   }
+
    @Override
    public String print(PrintWriter writer, String prefix, String suffix) {
       // Print occurs inside a function so we have to simulate something

@@ -1,113 +1,106 @@
 package se.kth.mal;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintWriter;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
+import javax.json.Json;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonObjectBuilder;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.xml.transform.ErrorListener;
+
+import org.antlr.v4.gui.TreeViewer;
+import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
+import org.antlr.v4.runtime.tree.TerminalNode;
+import se.kth.mal.antlr4.MalErrorListener;
+import se.kth.mal.antlr4.MalListener;
 import se.kth.mal.steps.Connection;
 import se.kth.mal.steps.SelectConnection;
 import se.kth.mal.steps.Step;
 
 public class CompilerModel {
 
-   private List<Asset>              assets        = new ArrayList<>();
-   private List<Association>        associations  = new ArrayList<>();
-   private Map<Association, String> links         = new HashMap<>();
-   private List<String>             includedFiles = new ArrayList<>();
+   private File                     inputFile;
+   private List<Asset>              assets       = new ArrayList<>();
+   private List<Association>        associations = new ArrayList<>();
+   private Map<Association, String> links        = new HashMap<>();
+   private int                      errors;
 
-   public CompilerModel(String securiLangFolder, String securiLangFile) throws FileNotFoundException, IOException {
+   private List<File> parsedFiles = new ArrayList<>();
 
-      String fileWithIncludesPath = includeIncludes(securiLangFolder, securiLangFile);
-
-      preprocess(fileWithIncludesPath);
-
-      InputStream is = System.in;
-      if (securiLangFile != null) {
-         System.out.println("Reading from " + fileWithIncludesPath);
-         is = new FileInputStream(fileWithIncludesPath);
+   public CompilerModel(File inputFile) {
+      this.errors = 0;
+      this.inputFile = inputFile;
+      parseFile(inputFile);
+      if (this.errors != 0) {
+         System.err.println("abort: there were parsing errors");
+         System.exit(1);
       }
-      CharStream input = CharStreams.fromStream(is);
-
-      sLangLexer lexer = new sLangLexer(input);
-      CommonTokenStream tokens = new CommonTokenStream(lexer);
-      sLangParser parser = new sLangParser(tokens);
-      ParseTree tree = parser.compilationUnit(); // parse
-
-      ParseTreeWalker walker = new ParseTreeWalker(); // create standard
-      // walker
-      sLangListener extractor = new SecuriLangListener(this);
-      walker.walk(extractor, tree); // initiate walk of tree with listener
       update();
    }
 
-   private void preprocess(String path) {
-      String file = null;
-      try {
-         file = new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
-      }
-      catch (IOException e) {
-         e.printStackTrace();
-      }
-      // LET, local variables. The fact that the variables are local complicates
-      // things a bit. Global variables could just be easily replaced. Local
-      // variables cannot be parsed by antlr since the string representation is
-      // already being dealt with (it is too late). We have to match and extract
-      // attack steps before antlr goes to work and perform a simple string
-      // replace.
+   public void parseFile(String path) {
+      parseFile(new File(this.inputFile.getParent(), path));
+   }
 
-      Pattern stepPattern = Pattern.compile("[^-][-+]>([^\\}|&]+)", Pattern.CASE_INSENSITIVE);
-      Pattern varPattern = Pattern.compile("let\\s+([a-z0-9_]+)\\s*=\\s*([^,]+),", Pattern.CASE_INSENSITIVE);
+   public void parseFile(File file) {
+      if (!parsedFiles.contains(file)) {
+         parsedFiles.add(file);
 
-      String master = "";
-
-      Matcher step = stepPattern.matcher(file);
-      while (step.find()) {
-         master += file.substring(0, step.start(1));
-         String append = file.substring(step.end(1), file.length());
-         String text = step.group(1);
-
-         Matcher var = varPattern.matcher(text);
-
-         while (var.find()) {
-            String name = var.group(1);
-            String content = var.group(2);
-            System.out.printf("var '%s' content '%s'\n", name, content);
-            text = text.substring(0, var.start()) + text.substring(var.end(), text.length());
-            // Escape both pattern and replacement. Make sure we only find
-            // occurances that are not contained words.
-            text = text.replaceAll("([^a-z0-9_])" + Pattern.quote(name) + "([^a-z0-9_])", "$1" + Matcher.quoteReplacement(content) + "$2");
-            var = varPattern.matcher(text);
+         CharStream input = null;
+         try {
+            input = CharStreams.fromPath(file.toPath());
          }
-         master += text;
-         file = append;
-         step = stepPattern.matcher(file);
+         catch (IOException e) {
+            e.printStackTrace();
+         }
+         MalErrorListener errorListener = new MalErrorListener(file);
+
+         MalLexer lexer = new MalLexer(input);
+         lexer.removeErrorListeners();
+         lexer.addErrorListener(errorListener);
+
+         CommonTokenStream tokens = new CommonTokenStream(lexer);
+
+         MalParser parser = new MalParser(tokens);
+         parser.removeErrorListeners();
+         parser.addErrorListener(errorListener);
+
+         ParseTree tree = parser.compilationUnit();
+
+         MalListener listener = new MalListener(this);
+         ParseTreeWalker walker = new ParseTreeWalker();
+         walker.walk(listener, tree);
+         this.errors += errorListener.getErrors();
       }
-      try (PrintWriter out = new PrintWriter(path)) {
-         out.println(master + file);
+   }
+
+   public void parse(ParseTree leaf, JsonArrayBuilder array, Parser parser) {
+      if (leaf instanceof TerminalNode) {
+         JsonObjectBuilder object = Json.createObjectBuilder();
+         object.add("name", leaf.getText());
+         array.add(object);
       }
-      catch (FileNotFoundException e) {
-         e.printStackTrace();
+      else {
+         String name = parser.getRuleNames()[((ParserRuleContext) leaf).getRuleIndex()];
+         JsonObjectBuilder object = Json.createObjectBuilder();
+         object.add("name", name);
+         JsonArrayBuilder arr = Json.createArrayBuilder();
+         for (int i = 0; i < leaf.getChildCount(); i++) {
+            parse(leaf.getChild(i), arr, parser);
+         }
+         object.add("children", arr);
+         array.add(object);
       }
    }
 
@@ -121,49 +114,6 @@ public class CompilerModel {
 
    public Map<Association, String> getLinks() {
       return links;
-   }
-
-   public String includeIncludes(String securiLangFolder, String securiLangFile) {
-      String filePath = securiLangFolder + "/" + securiLangFile;
-
-      String outPath = filePath + "inc";
-      try {
-         FileWriter fileWriter = new FileWriter(outPath);
-         BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-         appendFileToBufferedWriter(securiLangFolder, securiLangFile, bufferedWriter);
-         bufferedWriter.close();
-      }
-      catch (FileNotFoundException ex) {
-         System.out.println("Unable to open file '" + filePath + "'");
-      }
-      catch (IOException ex) {
-         System.out.println("Error reading file '" + filePath + "'");
-      }
-      return outPath;
-   }
-
-   public void appendFileToBufferedWriter(String securiLangFolder, String securiLangFile, BufferedWriter bufferedWriter) throws java.io.FileNotFoundException, java.io.IOException {
-      String line = null;
-      String filePath = securiLangFolder + "/" + securiLangFile;
-      if (includedFiles.contains(filePath)) {
-         return;
-      }
-      includedFiles.add(filePath);
-
-      FileReader fileReader = new FileReader(filePath);
-      BufferedReader bufferedReader = new BufferedReader(fileReader);
-      while ((line = bufferedReader.readLine()) != null) {
-         if (line.contains("include") && !line.contains("//")) {
-            if (line.split(" ")[0].equals("include")) {
-               String includeFileName = line.split(" ")[1];
-               appendFileToBufferedWriter(securiLangFolder, includeFileName, bufferedWriter);
-            }
-         }
-         else {
-            bufferedWriter.write(line + "\n");
-         }
-      }
-      bufferedReader.close();
    }
 
    public Asset addAsset(String name, String superAssetName, boolean abstractAsset) {
@@ -210,8 +160,8 @@ public class CompilerModel {
 
    public Association getAssociation(String assetName_1, String associationName, String assetName_2) {
       for (Association a : associations) {
-         if (a.name.equals(associationName)
-               && ((a.leftAssetName.equals(assetName_1) && a.rightAssetName.equals(assetName_2)) || (a.rightAssetName.equals(assetName_1) && a.leftAssetName.equals(assetName_2)))) {
+         if (a.name.equals(associationName) && ((a.leftAssetName.equals(assetName_1) && a.rightAssetName.equals(assetName_2)) || (a.rightAssetName.equals(assetName_1) && a.leftAssetName
+               .equals(assetName_2)))) {
             return a;
          }
       }
@@ -234,8 +184,6 @@ public class CompilerModel {
       // Does the association exist for the super asset of leftAsset?
       Asset leftAsset = getAsset(leftAssetName);
       if (!leftAsset.superAssetName.isEmpty()) {
-         System.out.println(String.format("No association from asset '%s' to field [%s]", leftAssetName, rightRoleName));
-         System.out.println(String.format("  Checking extended parent '%s' to field [%s]", leftAsset.superAssetName, rightRoleName));
          return getConnectedAssociation(leftAsset.superAssetName, rightRoleName, connection);
       }
       if (connection != null) {
@@ -269,7 +217,6 @@ public class CompilerModel {
       // set way up the parent tree. We must iterate upwards until we can't.
       Asset asset = getAsset(name);
       if (!asset.getSuperAssetName().equals("")) {
-         System.out.println("Climbing parents, " + asset.getSuperAssetName());
          return isLeftAsset(assoc, asset.getSuperAssetName());
       }
       else {
@@ -280,8 +227,7 @@ public class CompilerModel {
    /**
     * Updates all connections of a step with their associations.
     *
-    * @param step
-    *           Step to be updated.
+    * @param step Step to be updated.
     */
    void updateStep(Step step) {
       // A step is a collection of connections from one assets compromised
@@ -301,11 +247,9 @@ public class CompilerModel {
             // updated previous value from traversing a chain with a set
             // operation.
             connection.previousAsset = step.asset;
-            System.out.println("first child setting asset " + step.asset);
          }
          if (!(connection instanceof SelectConnection)) {
             // Normal step
-            System.out.println(connection.field);
             Association association = getConnectedAssociation(connection.previousAsset, connection.field, connection);
             boolean previousAssetLeft = isLeftAsset(association, connection.previousAsset);
             connection.associationUpdate(association, previousAssetLeft);
@@ -318,7 +262,6 @@ public class CompilerModel {
             for (int j = 0; j < ((SelectConnection) connection).steps.size(); j++) {
                Step child = ((SelectConnection) connection).steps.get(j);
                child.asset = connection.previousAsset;
-               System.out.println("updated set child prev asset " + child.asset);
                updateStep(child);
                if (j == 0) {
                   asset = child.getTargetAsset();
@@ -334,7 +277,6 @@ public class CompilerModel {
          if (i + 1 < step.connections.size()) {
             // Update the next steps previous asset
             step.connections.get(i + 1).previousAsset = connection.getCastedAsset();
-            System.out.println("setting next prev asset " + connection.getCastedAsset());
          }
       }
    }
@@ -351,7 +293,6 @@ public class CompilerModel {
 
       for (Asset asset : assets) {
          for (AttackStep attackStep : asset.attackSteps) {
-            System.out.println(String.format("Iterating children inside %s$%s", asset.name, attackStep.name));
             for (Step step : attackStep.steps) {
                updateStep(step);
                Step parent = step.reverse(step.getTargetAsset());
