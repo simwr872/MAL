@@ -35,7 +35,7 @@ public class SelectConnection extends Connection {
       connection.multiplicity = this.previousMultiplicity;
 
       for (Step step : steps) {
-         connection.steps.add(step.reverse(step.getTargetAsset()));
+         connection.steps.add(step.reverse(this.asset));
       }
       connection.operators = operators;
       return connection;
