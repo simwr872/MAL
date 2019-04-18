@@ -77,7 +77,7 @@ public class Attacker {
       }
       switch (matcher.group(1)) {
          case "BernoulliDistribution":
-            return a;
+            return a < 0.5 ? 0 : Double.MAX_VALUE;
          case "BinomialDistribution":
             return a*b;
          case "ExponentialDistribution":
