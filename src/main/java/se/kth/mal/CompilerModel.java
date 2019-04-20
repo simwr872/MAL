@@ -225,6 +225,38 @@ public class CompilerModel {
    }
 
    /**
+    * Traverses the ancestor hierarchy and returns which asset is the 'oldest'.
+    *
+    * @param asset1
+    * @param asset2
+    * @return
+    */
+   private String oldestAsset(String asset1, String asset2) {
+      Asset a1 = getAsset(asset1);
+      Asset a2 = getAsset(asset2);
+
+      String asset = asset1;
+      while (!asset.isEmpty()) {
+         Asset a = getAsset(asset);
+         if (a.getName().equals(a2.getName())) {
+            return a.getName();
+         }
+         asset = a.getSuperAssetName();
+      }
+
+      asset = asset2;
+      while (!asset.isEmpty()) {
+         Asset a = getAsset(asset);
+         if (a.getName().equals(a1.getName())) {
+            return a.getName();
+         }
+         asset = a.getSuperAssetName();
+      }
+
+      return "";
+   }
+
+   /**
     * Updates all connections of a step with their associations.
     *
     * @param step Step to be updated.
@@ -258,21 +290,23 @@ public class CompilerModel {
             // We are in a set operation, we can just start updating its child
             // steps while updating their assets to be the connections previous
             // asset since this would've changed during parsing.
-            String asset = "";
             for (int j = 0; j < ((SelectConnection) connection).steps.size(); j++) {
                Step child = ((SelectConnection) connection).steps.get(j);
                child.asset = connection.previousAsset;
                updateStep(child);
-               if (j == 0) {
-                  asset = child.getTargetAsset();
-               }
-               else if (!child.getTargetAsset().equals(asset)) {
+            }
+            String oldest = ((SelectConnection) connection).steps.get(0).getTargetAsset();
+            for (int j = 1; j < ((SelectConnection) connection).steps.size(); j++) {
+               Step child = ((SelectConnection) connection).steps.get(j);
+               String _oldest = oldestAsset(oldest, child.getTargetAsset());
+               if (_oldest.isEmpty()) {
                   ((SelectConnection) connection).debug.print();
                   child.debug.print();
-                  throw new Error(String.format("Different set type; %s =/= %s", child.getTargetAsset(), asset));
+                  throw new Error(String.format("Could not find common ancestor between '%s' and '%s'\n", oldest, child.getTargetAsset()));
                }
+               oldest = _oldest;
             }
-            ((SelectConnection) connection).update();
+            ((SelectConnection) connection).update(oldest);
          }
          if (i + 1 < step.connections.size()) {
             // Update the next steps previous asset

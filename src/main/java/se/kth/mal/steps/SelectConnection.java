@@ -16,8 +16,8 @@ public class SelectConnection extends Connection {
    public List<Step>   steps     = new ArrayList<>();
    public List<String> operators = new ArrayList<>();
 
-   public void update() {
-      asset = steps.get(0).getTargetAsset();
+   public void update(String asset) {
+      this.asset = asset;
       multiplicity = "*";
       previousMultiplicity = "*";
    }
@@ -35,7 +35,7 @@ public class SelectConnection extends Connection {
       connection.multiplicity = this.previousMultiplicity;
 
       for (Step step : steps) {
-         connection.steps.add(step.reverse(step.getTargetAsset()));
+         connection.steps.add(step.reverse(this.asset));
       }
       connection.operators = operators;
       return connection;
