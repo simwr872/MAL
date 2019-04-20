@@ -61,10 +61,10 @@ public class Attacker {
    }
 
    public void customizeTtc(String name, String distribution) {
-      ttcHashMap.put(name, Attacker.parseDistribution(distribution));
+      ttcHashMap.put(name, Attacker.parseDistribution(distribution, isDefense(name)));
    }
 
-   public static double parseDistribution(String dist) {
+   public static double parseDistribution(String dist, boolean defense) {
       Pattern pattern = Pattern.compile("([a-z]+)\\(*([0-9.]+)*,*([0-9.]+)*\\)*", Pattern.CASE_INSENSITIVE);
       Matcher matcher = pattern.matcher(dist);
       matcher.matches();
@@ -77,7 +77,11 @@ public class Attacker {
       }
       switch (matcher.group(1)) {
          case "BernoulliDistribution":
-            return a < 0.5 ? 0 : Double.MAX_VALUE;
+            if(defense) {
+               return a < 0.5 ? 0 : Double.MAX_VALUE;
+            } else {
+               return a < 0.5 ? Double.MAX_VALUE : 0;
+            }
          case "BinomialDistribution":
             return a*b;
          case "ExponentialDistribution":
@@ -104,6 +108,16 @@ public class Attacker {
       }
    }
 
+   private boolean isDefense(String name) {
+      name = Character.toLowerCase(name.charAt(0)) + name.substring(1);
+      for (Defense defense : Defense.allDefenses) {
+         if(defense.disable.fullName().equals(name)) {
+            return true;
+         }
+      }
+      return false;
+   }
+
    private Map<String, Double> readProfile(Properties profile) {
       Map<String, Double> profileMap = new HashMap<>();
       for (String name : profile.stringPropertyNames()) {
@@ -111,7 +125,7 @@ public class Attacker {
          if(ttcHashMap.containsKey(name) ) {
             profileMap.put(name, ttcHashMap.get(name));
          } else {
-            profileMap.put(name, parseDistribution(profile.getProperty(name)));
+            profileMap.put(name, parseDistribution(profile.getProperty(name), isDefense(name)));
          }
       }
       ttcHashMap.clear();
