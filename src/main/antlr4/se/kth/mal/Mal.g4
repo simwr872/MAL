@@ -76,13 +76,15 @@ Extends: 'extends';
 Let: 'let';
 
 Identifier: Letter (Letter | Digit)*;
-Parameters: LeftParen Number (Comma Number)* RightParen;
+// Since we want to avoid having a number lexer rule we have to handle whitespace here
+Parameters: LeftParen Space* Number (Space* Comma Space* Number)* Space* RightParen;
 File: (Letter | Digit | Path)+ '.mal';
 String: '"' ~["\\]* '"';
 fragment Path: [\\/-];
 fragment Letter: [a-zA-Z$_];
 fragment Number: (Digit* '.')? Digit+;
 fragment Digit: [0-9];
+fragment Space: [ \t\r\n];
 
-Whitespace: [ \t\r\n]+ -> skip;
+Whitespace: Space+ -> skip;
 Comment: '//' ~[\r\n]* -> skip;

@@ -56,7 +56,24 @@ public class CompilerWriter {
       this.model = new CompilerModel(input);
       String name = input.getName().replaceFirst("\\.[^.]+$", ""); // strip .mal
       writeD3(output, name);
-      writeJava(output, packageName);
+      writeJava(output, packageName, package2path(packageName));
+      writeTtc(output);
+   }
+
+   private void writeTtc(File output) {
+      File file = new File(output, "attackerProfile.ttc");
+      try {
+         PrintWriter out = new PrintWriter(file, "UTF-8");
+         for(Asset asset : this.model.getAssets()) {
+            for(AttackStep attackStep : asset.attackSteps) {
+               out.printf("%s.%s = %s\n", asset.name, attackStep.name, attackStep.getDistribution());
+            }
+         }
+         out.close();
+      }
+      catch (FileNotFoundException | UnsupportedEncodingException e) {
+         e.printStackTrace();
+      }
    }
 
    private String capitalize(final String line) {
@@ -160,10 +177,10 @@ public class CompilerWriter {
       }
    }
 
-   private void writeJava(File output, String packageName) {
+   private void writeJava(File output, String packageName, String packagePath) {
       writeCore(new File(output, "core"));
 
-      File out = new File(output, packageName);
+      File out = new File(output, packagePath);
       out.mkdirs();
 
       for (Asset asset : model.getAssets()) {

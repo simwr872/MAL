@@ -8,30 +8,30 @@ import java.util.List;
 import se.kth.mal.steps.Step;
 
 public class AttackStep {
-   public List<Step>          steps                     = new ArrayList<>();
-   public List<Step>          parentSteps               = new ArrayList<>();
-   public boolean             isExtension               = false;
-   boolean                    isSpecialization;
-   String                     superAttackStepName       = "";
-   Boolean                    hasSpecialization         = false;
-   Asset                      asset;
-   AttackStep                 containerStep;
-   Boolean                    mostImportant             = false;
-   Boolean                    visibility;
-   String                     attackStepType;
-   public String                     name;
-   String                     description;
-   String                     rationale;
+   public List<Step> steps       = new ArrayList<>();
+   public List<Step> parentSteps = new ArrayList<>();
+   public boolean    isExtension = false;
+   boolean    isSpecialization;
+   String     superAttackStepName = "";
+   Boolean    hasSpecialization   = false;
+   Asset      asset;
+   AttackStep containerStep;
+   Boolean    mostImportant       = false;
+   Boolean    visibility;
+   String     attackStepType;
+   public String name;
+   String description;
+   String rationale;
    public String       ttcFunction               = "Default";
    public List<Float>  ttcParameters             = new ArrayList<>();
    public List<String> existenceRequirementRoles = new ArrayList<>();
-   CompilerModel              model;
+   CompilerModel model;
 
-   public static final String DEFENSE_TYPE              = "#";
-   public static final String DEFENSE_E_TYPE            = "E";
-   public static final String DEFENSE_3_TYPE            = "3";
-   public static final String ATTACKSTEP_AND_TYPE       = "&";
-   public static final String ATTACKSTEP_OR_TYPE        = "|";
+   public static final String DEFENSE_TYPE        = "#";
+   public static final String DEFENSE_E_TYPE      = "E";
+   public static final String DEFENSE_3_TYPE      = "3";
+   public static final String ATTACKSTEP_AND_TYPE = "&";
+   public static final String ATTACKSTEP_OR_TYPE  = "|";
 
    public AttackStep(CompilerModel model, Asset asset, Boolean visibility, String attackStepType, String name) {
       this.asset = asset;
@@ -39,6 +39,23 @@ public class AttackStep {
       this.attackStepType = attackStepType;
       this.name = name;
       this.model = model;
+   }
+
+   public String getDistribution() {
+      if (ttcFunction.equals("Default")) {
+         return "Zero";
+      }
+      else {
+         String s = ttcFunction;
+         if (!ttcParameters.isEmpty()) {
+            List<String> params = new ArrayList<>();
+            for (Float p : ttcParameters) {
+               params.add(String.valueOf(p));
+            }
+            s += "(" + String.join(",", params) + ")";
+         }
+         return s;
+      }
    }
 
    public String fullDefaultName() {
