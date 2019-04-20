@@ -23,11 +23,13 @@ public class Master {
       }
 
       File output = new File(outputPath);
+      if(!output.exists()) {
+         output.mkdirs();
+      }
       if(!output.isDirectory()) {
          System.err.printf("Invalid output path '%s'\n", output.getAbsolutePath());
          System.exit(1);
       }
-      output.mkdirs();
 
       if (foreseeti) {
          File icon = null;

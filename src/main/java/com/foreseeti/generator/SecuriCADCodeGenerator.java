@@ -431,7 +431,7 @@ public class SecuriCADCodeGenerator {
       writer.println("    }");
 
       writer.println("    @Override");
-      writer.println("    public Set<AttackStep> getAttackStepChildren() {");
+      writer.println("    public java.util.Set<AttackStep> getAttackStepChildren() {");
       writer.println("      return FClass.toSampleSet(((Attacker) getContainerFClass()).firstSteps, null);");
       writer.println("    }");
       writer.println("  }");
@@ -823,12 +823,12 @@ public class SecuriCADCodeGenerator {
       if (!attackStep.steps.isEmpty()) {
 
          writer.println("@Override");
-         writer.println("public Set<AttackStep> getAttackStepChildren() {");
+         writer.println("public java.util.Set<AttackStep> getAttackStepChildren() {");
          if (!attackStep.isSpecialization() || attackStep.isExtension) {
-            writer.println("Set<AttackStep> set = new HashSet<>(super.getAttackStepChildren());");
+            writer.println("java.util.Set<AttackStep> set = new java.util.HashSet<>(super.getAttackStepChildren());");
          }
          else {
-            writer.println("Set<AttackStep> set = new HashSet<>();");
+            writer.println("java.util.Set<AttackStep> set = new java.util.HashSet<>();");
          }
          for (Step step : attackStep.steps) {
             step.print(writer, "set.add(%s);\n", "(null)");
@@ -868,7 +868,7 @@ public class SecuriCADCodeGenerator {
       for (Association association : asset.getAssociations()) {
 
          if (association.getRightMultiplicity().equals("*") || association.getRightMultiplicity().equals("1-*")) {
-            writer.println(String.format("public Set<%s> %s(BaseSample sample) { return toSampleSet(%s, sample); } \n", capitalize(association.getRightAssetName()), association.getRightRoleName(),
+            writer.println(String.format("public java.util.Set<%s> %s(BaseSample sample) { return toSampleSet(%s, sample); } \n", capitalize(association.getRightAssetName()), association.getRightRoleName(),
                   association.getRightRoleName()));
          }
          else {

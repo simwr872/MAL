@@ -46,7 +46,7 @@ public class SelectConnection extends Connection {
       List<String> sets = new ArrayList<>();
       for (Step step : steps) {
          String set = decapitalize(asset) + "_" + RandomStringUtils.randomAlphabetic(5);
-         writer.printf("Set<%s> %s = new HashSet<>();\n", asset, set);
+         writer.printf("java.util.Set<%s> %s = new java.util.HashSet<>();\n", asset, set);
          step.print(writer, set + ".add(%s);\n", prefix, setSuffix, false);
          sets.add(set);
       }

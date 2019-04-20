@@ -30,8 +30,8 @@ public class RecursiveConnection extends Connection {
       String set = decapitalize(asset) + "_" + RandomStringUtils.randomAlphabetic(5);
       String pool = decapitalize(asset) + "_" + RandomStringUtils.randomAlphabetic(5);
       String item = decapitalize(asset) + "_" + RandomStringUtils.randomAlphabetic(5);
-      writer.printf("Set<%s> %s = new HashSet<>();\n", asset, set);
-      writer.printf("List<%s> %s = new ArrayList<>();\n", asset, pool);
+      writer.printf("java.util.Set<%s> %s = new java.util.HashSet<>();\n", asset, set);
+      writer.printf("java.util.List<%s> %s = new java.util.ArrayList<>();\n", asset, pool);
       // Add ourselves to the returned set and current pool
       if(!prefix.isEmpty()) {
          writer.printf("%s.add(%s);\n", set, prefix.substring(0, prefix.length() - 1));

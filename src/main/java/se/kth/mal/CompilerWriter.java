@@ -219,7 +219,7 @@ public class CompilerWriter {
    void printAssociations(Asset asset) {
       for (Association association : model.getAssociations(asset)) {
          if (association.rightMultiplicity.equals("*") || association.rightMultiplicity.equals("1-*")) {
-            writer.println("   public Set<" + association.rightAssetName + "> " + association.rightRoleName + " = new HashSet<>();");
+            writer.println("   public java.util.Set<" + association.rightAssetName + "> " + association.rightRoleName + " = new HashSet<>();");
          }
          else {
             if (association.rightMultiplicity.equals("1") || association.rightMultiplicity.equals("0-1")) {
@@ -485,7 +485,7 @@ public class CompilerWriter {
    void printUpdateChildren(AttackStep attackStep) {
       if (!attackStep.steps.isEmpty()) {
          writer.println("@Override");
-         writer.println("public void updateChildren(Set<AttackStep> activeAttackSteps) {");
+         writer.println("public void updateChildren(java.util.Set<AttackStep> activeAttackSteps) {");
          if (attackStep.isExtension) {
             writer.println("super.updateChildren(activeAttackSteps);");
          }
@@ -597,8 +597,8 @@ public class CompilerWriter {
 
    void printGetAssociatedAssets(Asset asset) {
       writer.println("   @Override");
-      writer.println("   public Set<Asset> getAssociatedAssets(String roleName) {");
-      writer.println("      Set<Asset> assets = new HashSet<>();");
+      writer.println("   public java.util.Set<Asset> getAssociatedAssets(String roleName) {");
+      writer.println("      java.util.Set<Asset> assets = new java.util.HashSet<>();");
       for (Association association : asset.getAssociationsIncludingInherited()) {
          writer.println(
                "      if (roleName.equals(\"" + association.getTargetRoleNameIncludingInheritance(asset) + "\")  && " + association.getTargetRoleNameIncludingInheritance(asset) + " != null) {");
@@ -618,8 +618,8 @@ public class CompilerWriter {
 
    void printGetAllAssociatedAssets(Asset asset) {
       writer.println("   @Override");
-      writer.println("   public Set<Asset> getAllAssociatedAssets() {");
-      writer.println("      Set<Asset> assets = new HashSet<>();");
+      writer.println("   public java.util.Set<Asset> getAllAssociatedAssets() {");
+      writer.println("      java.util.Set<Asset> assets = new java.util.HashSet<>();");
       for (Association association : asset.getAssociationsIncludingInherited()) {
          if (association.targetMultiplicityIncludingInheritance(asset).equals("*") || association.targetMultiplicityIncludingInheritance(asset).equals("1-*")) {
             writer.println("      assets.addAll(" + association.getTargetRoleNameIncludingInheritance(asset) + ");");
