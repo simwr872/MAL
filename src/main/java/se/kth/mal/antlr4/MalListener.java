@@ -121,9 +121,11 @@ public class MalListener extends MalBaseListener {
          }
          else if (transitive) {
             step.connections.add(new RecursiveConnection(name));
+            step.connections.get(step.connections.size() - 1).debug = debug(ctx);
          }
          else {
             step.connections.add(new Connection(name, type));
+            step.connections.get(step.connections.size() - 1).debug = debug(ctx);
          }
       }
       else if (ctx.expr().size() == 1) {
@@ -146,6 +148,7 @@ public class MalListener extends MalBaseListener {
             con.steps.add(childStep);
          }
          step.connections.add(con);
+         step.connections.get(step.connections.size() - 1).debug = debug(ctx);
       }
       else {
          // Chained. Type carries only for the left expression. As an example,
