@@ -2,6 +2,7 @@ grammar Mal;
 
 compilationUnit: (associations | category | include)* EOF;
 
+// Revisit where meta is placed?
 meta: metaType Colon String;
 metaType: Info | Rationale | Assumptions;
 type: LeftBracket Identifier RightBracket;
@@ -17,9 +18,11 @@ category: Category Identifier meta* LeftBrace asset* RightBrace;
 asset: assetType Identifier (Extends Identifier)? meta* LeftBrace attackstep* RightBrace;
 assetType: Asset | AbstractAsset;
 
-attackstep: attackstepType Identifier ttc? meta* (reachedType statement (Comma statement)*)?;
-attackstepType: AttackstepAll | AttackstepAny | Defense | DefenseExistence | DefenseNonExistence;
+attackstep: attackstepType Identifier ttc? meta* existence? (reachedType statement (Comma statement)*)?;
+// Should be DefenseExistence, not Number
+attackstepType: AttackstepAll | AttackstepAny | Defense | Number | DefenseNonExistence;
 ttc: LeftBracket Identifier (LeftParen Number (Comma Number)* RightParen)? RightBracket;
+existence: Existence Identifier (Comma Identifier)*;
 reachedType: AttackstepReach | AttackstepInherit;
 statement: (Let Identifier Assign)? expr;
 expr
@@ -37,8 +40,10 @@ AttackstepReach: '->';
 AttackstepInherit: '+>';
 
 Defense: '#';
-DefenseExistence: '3';
+// Lexer is confused by this, since it's technically a number
+// DefenseExistence: '3';
 DefenseNonExistence: 'E';
+Existence: '<-';
 
 LeftRelation: '<--';
 RightRelation: '-->';

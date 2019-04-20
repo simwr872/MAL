@@ -33,8 +33,13 @@ public class RecursiveConnection extends Connection {
       writer.printf("Set<%s> %s = new HashSet<>();\n", asset, set);
       writer.printf("List<%s> %s = new ArrayList<>();\n", asset, pool);
       // Add ourselves to the returned set and current pool
-      writer.printf("%s.add(%s);\n", set, prefix.substring(0, prefix.length() - 1));
-      writer.printf("%s.add(%s);\n", pool, prefix.substring(0, prefix.length() - 1));
+      if(!prefix.isEmpty()) {
+         writer.printf("%s.add(%s);\n", set, prefix.substring(0, prefix.length() - 1));
+         writer.printf("%s.add(%s);\n", pool, prefix.substring(0, prefix.length() - 1));
+      } else {
+         writer.printf("%s.add(%s.this);\n", set, asset);
+         writer.printf("%s.add(%s.this);\n", pool, asset);
+      }
 
       writer.printf("%s %s;\n", asset, item);
       writer.printf("while(!%s.isEmpty()) {\n", pool);

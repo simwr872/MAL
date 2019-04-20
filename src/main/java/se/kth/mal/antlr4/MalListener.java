@@ -78,11 +78,11 @@ public class MalListener extends MalBaseListener {
          }
       }
 
-      /*if (ctx.existence() != null) {
-         for (TerminalNode id : ctx.existence().ID()) {
+      if (ctx.existence() != null) {
+         for (TerminalNode id : ctx.existence().Identifier()) {
             attackStep.existenceRequirementRoles.add(id.getText());
          }
-      }*/
+      }
    }
 
    @Override public void enterStatement(StatementContext ctx) {
