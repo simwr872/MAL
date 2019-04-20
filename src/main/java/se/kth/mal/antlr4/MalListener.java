@@ -73,9 +73,15 @@ public class MalListener extends MalBaseListener {
       if (ctx.ttc() != null) {
          String dist = ctx.ttc().Identifier().getText();
          this.attackStep.ttcFunction = dist;
-         for (TerminalNode num : ctx.ttc().Number()) {
-            this.attackStep.ttcParameters.add(Float.parseFloat(num.getText()));
+         if (ctx.ttc().Parameters() != null) {
+            String parameters = ctx.ttc().Parameters().getText();
+            parameters = parameters.substring(1, parameters.length()-1);
+            String params[] = parameters.split(",");
+            for (String param : params) {
+               this.attackStep.ttcParameters.add(Float.parseFloat(param));
+            }
          }
+
       }
 
       if (ctx.existence() != null) {

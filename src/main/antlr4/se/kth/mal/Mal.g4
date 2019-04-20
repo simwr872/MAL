@@ -11,7 +11,7 @@ include: Include File;
 
 associations: Associations LeftBrace association* RightBrace;
 association: Identifier type multiplicity LeftRelation Identifier RightRelation multiplicity type Identifier meta*;
-multiplicity: multiplicity Range multiplicity | Number | Unlimited;
+multiplicity: Single | ZeroSingle | SingleMany | Many;
 
 category: Category Identifier meta* LeftBrace asset* RightBrace;
 
@@ -19,9 +19,8 @@ asset: assetType Identifier (Extends Identifier)? meta* LeftBrace attackstep* Ri
 assetType: Asset | AbstractAsset;
 
 attackstep: attackstepType Identifier ttc? meta* existence? (reachedType statement (Comma statement)*)?;
-// Should be DefenseExistence, not Number
-attackstepType: AttackstepAll | AttackstepAny | Defense | Number | DefenseNonExistence;
-ttc: LeftBracket Identifier (LeftParen Number (Comma Number)* RightParen)? RightBracket;
+attackstepType: AttackstepAll | AttackstepAny | Defense | DefenseExistence | DefenseNonExistence;
+ttc: LeftBracket Identifier Parameters? RightBracket;
 existence: Existence Identifier (Comma Identifier)*;
 reachedType: AttackstepReach | AttackstepInherit;
 statement: (Let Identifier Assign)? expr;
@@ -40,15 +39,16 @@ AttackstepReach: '->';
 AttackstepInherit: '+>';
 
 Defense: '#';
-// Lexer is confused by this, since it's technically a number
-// DefenseExistence: '3';
+DefenseExistence: '3';
 DefenseNonExistence: 'E';
 Existence: '<-';
 
 LeftRelation: '<--';
 RightRelation: '-->';
-Unlimited: '*';
-Range: '-';
+Single: '1';
+ZeroSingle: '0-1';
+SingleMany: '1-*';
+Many: '*';
 
 LeftParen: '(';
 RightParen: ')';
@@ -76,11 +76,12 @@ Extends: 'extends';
 Let: 'let';
 
 Identifier: Letter (Letter | Digit)*;
-Number: (Digit* '.')? Digit+;
+Parameters: LeftParen Number (Comma Number)* RightParen;
 File: (Letter | Digit | Path)+ '.mal';
 String: '"' ~["\\]* '"';
 fragment Path: [\\/-];
 fragment Letter: [a-zA-Z$_];
+fragment Number: (Digit* '.')? Digit+;
 fragment Digit: [0-9];
 
 Whitespace: [ \t\r\n]+ -> skip;
