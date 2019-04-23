@@ -653,7 +653,7 @@ public class SecuriCADCodeGenerator {
       }
       if (svgBase64 != null) {
          writer.println("  public static String getIconSVG() {");
-         writer.println("    return \"data:image/svg;base64," + svgBase64 + "\";");
+         writer.println("    return \"data:image/svg+xml;base64," + svgBase64 + "\";");
          writer.println("  }");
       }
       if (pngBase64 != null) {
