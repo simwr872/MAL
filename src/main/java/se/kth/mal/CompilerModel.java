@@ -1,27 +1,18 @@
 package se.kth.mal;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import javax.json.Json;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObjectBuilder;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.xml.transform.ErrorListener;
-
-import org.antlr.v4.gui.TreeViewer;
-import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
-import org.antlr.v4.runtime.tree.TerminalNode;
 import se.kth.mal.antlr4.MalErrorListener;
 import se.kth.mal.antlr4.MalListener;
 import se.kth.mal.steps.Connection;
@@ -36,7 +27,7 @@ public class CompilerModel {
    private Map<Association, String> links        = new HashMap<>();
    private int                      errors;
 
-   private List<File> parsedFiles = new ArrayList<>();
+   private List<File>               parsedFiles  = new ArrayList<>();
 
    public CompilerModel(File inputFile) {
       this.errors = 0;
@@ -82,25 +73,6 @@ public class CompilerModel {
          ParseTreeWalker walker = new ParseTreeWalker();
          walker.walk(listener, tree);
          this.errors += errorListener.getErrors();
-      }
-   }
-
-   public void parse(ParseTree leaf, JsonArrayBuilder array, Parser parser) {
-      if (leaf instanceof TerminalNode) {
-         JsonObjectBuilder object = Json.createObjectBuilder();
-         object.add("name", leaf.getText());
-         array.add(object);
-      }
-      else {
-         String name = parser.getRuleNames()[((ParserRuleContext) leaf).getRuleIndex()];
-         JsonObjectBuilder object = Json.createObjectBuilder();
-         object.add("name", name);
-         JsonArrayBuilder arr = Json.createArrayBuilder();
-         for (int i = 0; i < leaf.getChildCount(); i++) {
-            parse(leaf.getChild(i), arr, parser);
-         }
-         object.add("children", arr);
-         array.add(object);
       }
    }
 
@@ -160,8 +132,8 @@ public class CompilerModel {
 
    public Association getAssociation(String assetName_1, String associationName, String assetName_2) {
       for (Association a : associations) {
-         if (a.name.equals(associationName) && ((a.leftAssetName.equals(assetName_1) && a.rightAssetName.equals(assetName_2)) || (a.rightAssetName.equals(assetName_1) && a.leftAssetName
-               .equals(assetName_2)))) {
+         if (a.name.equals(associationName)
+               && ((a.leftAssetName.equals(assetName_1) && a.rightAssetName.equals(assetName_2)) || (a.rightAssetName.equals(assetName_1) && a.leftAssetName.equals(assetName_2)))) {
             return a;
          }
       }
@@ -259,7 +231,8 @@ public class CompilerModel {
    /**
     * Updates all connections of a step with their associations.
     *
-    * @param step Step to be updated.
+    * @param step
+    *           Step to be updated.
     */
    void updateStep(Step step) {
       // A step is a collection of connections from one assets compromised

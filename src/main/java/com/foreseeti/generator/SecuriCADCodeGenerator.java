@@ -11,7 +11,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -19,11 +18,8 @@ import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
+
 import org.apache.batik.transcoder.TranscoderException;
 import org.apache.batik.transcoder.TranscoderInput;
 import org.apache.batik.transcoder.TranscoderOutput;
@@ -42,7 +38,7 @@ public class SecuriCADCodeGenerator {
    protected String        securiLangFolder;
    protected String        securiLangFile;
    protected String        testCasesFolder;
-   protected String        jsonString = "";
+   protected String        jsonString   = "";
    protected CompilerModel model;
    protected String        packageName;
    protected String        javaFolder;
@@ -59,8 +55,9 @@ public class SecuriCADCodeGenerator {
    }
 
    public SecuriCADCodeGenerator(File input, File output, String packageName, File iconPath) {
+      this.visualFolder = iconPath;
       String packagePath = package2path(packageName);
-      model = new CompilerModel(input);
+      this.model = new CompilerModel(input);
       try {
          writeJava(output.getAbsolutePath(), packageName, packagePath);
       }
@@ -90,10 +87,11 @@ public class SecuriCADCodeGenerator {
       File outPut = new File(javaFolder);
       if (outPut.exists() && !outPut.isDirectory()) {
          throw new IllegalArgumentException("\"" + javaFolder + "\" is not a directory");
-      } else if (!outPut.exists()) {
-        if (!outPut.mkdirs()) {
-          throw new IllegalArgumentException("Couldn't create directory \"" + javaFolder + "\"");
-        }
+      }
+      else if (!outPut.exists()) {
+         if (!outPut.mkdirs()) {
+            throw new IllegalArgumentException("Couldn't create directory \"" + javaFolder + "\"");
+         }
       }
 
       if (testCasesFolder != null && !testCasesFolder.equals("")) {
@@ -111,7 +109,6 @@ public class SecuriCADCodeGenerator {
          }
       }
    }
-
 
    private String capitalize(final String line) {
       return Character.toUpperCase(line.charAt(0)) + line.substring(1);
@@ -190,7 +187,7 @@ public class SecuriCADCodeGenerator {
          printDefaultOverriddenMethods(asset);
          printLocalAttackStepSpecialization(asset);
          if (visualFolder != null) {
-           printIcons(asset);
+            printIcons(asset);
          }
          writer.println("}");
          writer.close();
@@ -620,7 +617,8 @@ public class SecuriCADCodeGenerator {
          String fileExtension = file.getName().substring(dotIndex + 1);
          if (fileExtension.equals("svg")) {
             svgFile = file;
-         } else if (fileExtension.equals("png")) {
+         }
+         else if (fileExtension.equals("png")) {
             pngFile = file;
          }
       }
@@ -634,20 +632,24 @@ public class SecuriCADCodeGenerator {
       if (svgFile != null) {
          try {
             svgBase64 = fileToBase64(svgFile);
-         } catch (IOException e) {
+         }
+         catch (IOException e) {
             e.printStackTrace();
          }
       }
       if (pngFile == null) {
          try {
             pngBase64 = svgFileToPngBase64(svgFile);
-         } catch (TranscoderException e) {
+         }
+         catch (TranscoderException e) {
             e.printStackTrace();
          }
-      } else {
+      }
+      else {
          try {
             pngBase64 = fileToBase64(svgFile);
-         } catch (IOException e) {
+         }
+         catch (IOException e) {
             e.printStackTrace();
          }
       }
@@ -868,8 +870,8 @@ public class SecuriCADCodeGenerator {
       for (Association association : asset.getAssociations()) {
 
          if (association.getRightMultiplicity().equals("*") || association.getRightMultiplicity().equals("1-*")) {
-            writer.println(String.format("public java.util.Set<%s> %s(BaseSample sample) { return toSampleSet(%s, sample); } \n", capitalize(association.getRightAssetName()), association.getRightRoleName(),
-                  association.getRightRoleName()));
+            writer.println(String.format("public java.util.Set<%s> %s(BaseSample sample) { return toSampleSet(%s, sample); } \n", capitalize(association.getRightAssetName()),
+                  association.getRightRoleName(), association.getRightRoleName()));
          }
          else {
             writer.println(String.format("public %s %s(BaseSample sample) { return toSample(%s, sample); } \n", capitalize(association.getRightAssetName()), association.getRightRoleName(),

@@ -12,18 +12,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -41,7 +34,7 @@ import se.kth.mal.steps.Step;
 // The JavaWriter produces executable Java code for testing purposes.
 public class CompilerWriter {
 
-   PrintWriter writer;
+   PrintWriter          writer;
    public CompilerModel model;
 
    private String package2path(String packageName) throws IllegalArgumentException {
@@ -64,8 +57,8 @@ public class CompilerWriter {
       File file = new File(output, "attackerProfile.ttc");
       try {
          PrintWriter out = new PrintWriter(file, "UTF-8");
-         for(Asset asset : this.model.getAssets()) {
-            for(AttackStep attackStep : asset.attackSteps) {
+         for (Asset asset : this.model.getAssets()) {
+            for (AttackStep attackStep : asset.attackSteps) {
                out.printf("%s.%s = %s\n", asset.name, attackStep.name, attackStep.getDistribution());
             }
          }

@@ -1,7 +1,6 @@
 package se.kth.mal;
 
 import java.io.File;
-import java.io.IOException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -17,23 +16,23 @@ public class Master {
 
    public Master(String inputPath, String outputPath, String packageName, boolean foreseeti, String iconPath) {
       File input = new File(inputPath);
-      if(!input.exists() || !input.isFile()) {
+      if (!input.exists() || !input.isFile()) {
          System.err.printf("Invalid input file '%s'\n", input.getAbsolutePath());
          System.exit(1);
       }
 
       File output = new File(outputPath);
-      if(!output.exists()) {
+      if (!output.exists()) {
          output.mkdirs();
       }
-      if(!output.isDirectory()) {
+      if (!output.isDirectory()) {
          System.err.printf("Invalid output path '%s'\n", output.getAbsolutePath());
          System.exit(1);
       }
 
       if (foreseeti) {
          File icon = null;
-         if(iconPath != null) {
+         if (iconPath != null) {
             icon = new File(iconPath);
             if (!icon.exists() || !icon.isDirectory()) {
                System.err.printf("Invalid icon path '%s'\n", icon.getAbsolutePath());

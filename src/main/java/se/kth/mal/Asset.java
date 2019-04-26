@@ -8,11 +8,11 @@ import java.util.List;
 import java.util.Set;
 
 public class Asset {
-   CompilerModel model;
-   public String name;
-   String info;
-   String rationale;
-   public String category = "NoCategoryName";
+   CompilerModel    model;
+   public String    name;
+   String           info;
+   String           rationale;
+   public String    category                    = "NoCategoryName";
    String           superAssetName              = "";
    Integer          nDefenses                   = 0;
    List<AttackStep> attackSteps                 = new ArrayList<>();

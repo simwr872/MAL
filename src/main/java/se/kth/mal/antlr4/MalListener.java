@@ -6,14 +6,23 @@ import java.util.Map;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import se.kth.mal.*;
+import se.kth.mal.Asset;
+import se.kth.mal.AttackStep;
+import se.kth.mal.CompilerModel;
+import se.kth.mal.MalBaseListener;
 import se.kth.mal.MalParser.AssetContext;
+import se.kth.mal.MalParser.AssociationContext;
+import se.kth.mal.MalParser.AttackstepContext;
 import se.kth.mal.MalParser.CategoryContext;
 import se.kth.mal.MalParser.ExprContext;
 import se.kth.mal.MalParser.IncludeContext;
-import se.kth.mal.steps.*;
-
-import static se.kth.mal.MalParser.*;
+import se.kth.mal.MalParser.OperatorContext;
+import se.kth.mal.MalParser.StatementContext;
+import se.kth.mal.steps.Connection;
+import se.kth.mal.steps.DebugInfo;
+import se.kth.mal.steps.RecursiveConnection;
+import se.kth.mal.steps.SelectConnection;
+import se.kth.mal.steps.Step;
 
 public class MalListener extends MalBaseListener {
    private CompilerModel            model;
@@ -28,15 +37,18 @@ public class MalListener extends MalBaseListener {
       this.variables = new HashMap<>();
    }
 
-   @Override public void enterInclude(IncludeContext ctx) {
+   @Override
+   public void enterInclude(IncludeContext ctx) {
       this.model.parseFile(ctx.File().getText());
    }
 
-   @Override public void enterCategory(CategoryContext ctx) {
+   @Override
+   public void enterCategory(CategoryContext ctx) {
       this.category = ctx.Identifier().getText();
    }
 
-   @Override public void exitCategory(CategoryContext ctx) {
+   @Override
+   public void exitCategory(CategoryContext ctx) {
       this.category = "";
    }
 
@@ -44,7 +56,8 @@ public class MalListener extends MalBaseListener {
       return new DebugInfo(ctx.getText(), ctx.getStart().getLine(), ctx.getStart().getCharPositionInLine(), ctx.getStop().getLine(), ctx.getStop().getCharPositionInLine());
    }
 
-   @Override public void enterAssociation(AssociationContext ctx) {
+   @Override
+   public void enterAssociation(AssociationContext ctx) {
       String leftAsset = ctx.Identifier(0).getText();
       String leftField = ctx.type(0).Identifier().getText();
       String leftMult = ctx.multiplicity(0).getText();
@@ -55,7 +68,8 @@ public class MalListener extends MalBaseListener {
       this.model.addAssociation(leftAsset, leftField, leftMult, "<--", name, "-->", rightMult, rightField, rightAsset);
    }
 
-   @Override public void enterAsset(AssetContext ctx) {
+   @Override
+   public void enterAsset(AssetContext ctx) {
       String name = ctx.Identifier(0).getText();
       boolean isAbstract = ctx.assetType().getText().equals("abstractAsset");
       String superAsset = ctx.Identifier().size() > 1 ? ctx.Identifier(1).getText() : "";
@@ -63,7 +77,8 @@ public class MalListener extends MalBaseListener {
       this.asset.category = this.category;
    }
 
-   @Override public void enterAttackstep(AttackstepContext ctx) {
+   @Override
+   public void enterAttackstep(AttackstepContext ctx) {
       this.variables.clear();
       String name = ctx.Identifier().getText();
       String type = ctx.attackstepType().getText();
@@ -75,7 +90,7 @@ public class MalListener extends MalBaseListener {
          this.attackStep.ttcFunction = dist;
          if (ctx.ttc().Parameters() != null) {
             String parameters = ctx.ttc().Parameters().getText();
-            parameters = parameters.substring(1, parameters.length()-1);
+            parameters = parameters.substring(1, parameters.length() - 1);
             String params[] = parameters.split(",");
             for (String param : params) {
                this.attackStep.ttcParameters.add(Float.parseFloat(param));
@@ -91,7 +106,8 @@ public class MalListener extends MalBaseListener {
       }
    }
 
-   @Override public void enterStatement(StatementContext ctx) {
+   @Override
+   public void enterStatement(StatementContext ctx) {
       if (ctx.Identifier() != null) {
          String name = ctx.Identifier().getText();
          ExprContext expr = ctx.expr();
