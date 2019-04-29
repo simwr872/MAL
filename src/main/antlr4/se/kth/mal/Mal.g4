@@ -7,7 +7,7 @@ meta: metaType Colon String;
 metaType: Info | Rationale | Assumptions;
 type: LeftBracket Identifier RightBracket;
 
-include: Include File;
+include: Include (Identifier | Dot | Separator)+;
 
 associations: Associations LeftBrace association* RightBrace;
 association: Identifier type multiplicity LeftRelation Identifier RightRelation multiplicity type Identifier meta*;
@@ -78,9 +78,8 @@ Let: 'let';
 Identifier: Letter (Letter | Digit)*;
 // Since we want to avoid having a number lexer rule we have to handle whitespace here
 Parameters: LeftParen Space* Number (Space* Comma Space* Number)* Space* RightParen;
-File: (Letter | Digit | Path)+ '.mal';
+Separator: [\\/];
 String: '"' ~["\\]* '"';
-fragment Path: [\\/-];
 fragment Letter: [a-zA-Z$_];
 fragment Number: (Digit* '.')? Digit+;
 fragment Digit: [0-9];

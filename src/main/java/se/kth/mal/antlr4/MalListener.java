@@ -39,7 +39,7 @@ public class MalListener extends MalBaseListener {
 
    @Override
    public void enterInclude(IncludeContext ctx) {
-      this.model.parseFile(ctx.File().getText());
+      this.model.parseFile(ctx.getText().replace(ctx.Include().getText(), ""));
    }
 
    @Override
