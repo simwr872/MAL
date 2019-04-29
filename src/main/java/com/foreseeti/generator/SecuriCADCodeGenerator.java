@@ -244,7 +244,7 @@ public class SecuriCADCodeGenerator {
       writer.println("}");
       writer.println("@Override");
       writer.println("public String getDescription() {");
-      writer.println("return \"\";");
+      writer.printf("return \"%s\";\n", asset.getInfo());
       writer.println("}");
    }
 

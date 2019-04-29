@@ -196,4 +196,8 @@ public class AttackStep {
    public String getRationale() {
       return rationale;
    }
+
+   public void setDescription(String text) {
+      this.description = text;
+   }
 }

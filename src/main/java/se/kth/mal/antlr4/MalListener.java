@@ -16,6 +16,7 @@ import se.kth.mal.MalParser.AttackstepContext;
 import se.kth.mal.MalParser.CategoryContext;
 import se.kth.mal.MalParser.ExprContext;
 import se.kth.mal.MalParser.IncludeContext;
+import se.kth.mal.MalParser.MetaContext;
 import se.kth.mal.MalParser.OperatorContext;
 import se.kth.mal.MalParser.StatementContext;
 import se.kth.mal.steps.Connection;
@@ -75,6 +76,21 @@ public class MalListener extends MalBaseListener {
       String superAsset = ctx.Identifier().size() > 1 ? ctx.Identifier(1).getText() : "";
       this.asset = this.model.addAsset(name, superAsset, isAbstract);
       this.asset.category = this.category;
+      for (MetaContext meta : ctx.meta()) {
+         String text = meta.String().getText();
+         text = text.substring(1, text.length() - 1);
+         text = text.replaceAll("\"", "'");
+         switch (meta.metaType().getText()) {
+            case "info":
+               this.asset.setInfo(text);
+               break;
+            case "rationale":
+               this.asset.setRationale(text);
+               break;
+            default:
+               break;
+         }
+      }
    }
 
    @Override
@@ -84,6 +100,22 @@ public class MalListener extends MalBaseListener {
       String type = ctx.attackstepType().getText();
       this.attackStep = this.asset.addAttackStep(true, type, name);
       this.attackStep.isExtension = ctx.reachedType() != null && ctx.reachedType().getText().equals("+>");
+
+      for (MetaContext meta : ctx.meta()) {
+         String text = meta.String().getText();
+         text = text.substring(1, text.length() - 1);
+         text = text.replaceAll("\"", "'");
+         switch (meta.metaType().getText()) {
+            case "info":
+               this.attackStep.setDescription(text);
+               break;
+            case "rationale":
+               this.attackStep.setRationale(text);
+               break;
+            default:
+               break;
+         }
+      }
 
       if (ctx.ttc() != null) {
          String dist = ctx.ttc().Identifier().getText();
@@ -103,6 +135,13 @@ public class MalListener extends MalBaseListener {
          for (TerminalNode id : ctx.existence().Identifier()) {
             attackStep.existenceRequirementRoles.add(id.getText());
          }
+      }
+
+      boolean requiresExistence = type.equals("3") || type.equals("E");
+      if (requiresExistence && (ctx.existence() == null || ctx.existence().Identifier().size() == 0)) {
+         debug(ctx).print();
+         System.err.printf("Defense type '%s' is missing required existence\n", type);
+         System.exit(1);
       }
    }
 
