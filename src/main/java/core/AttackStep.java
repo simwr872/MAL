@@ -74,7 +74,7 @@ public class AttackStep {
    }
 
    public void assertCompromisedInstantaneously() {
-      if (ttc < 0.5) {
+      if (ttc < 0.1) {
          System.out.println("+ " + fullName() + " was reached instantaneously as expected.");
          assertTrue(true);
       }
@@ -86,12 +86,12 @@ public class AttackStep {
    }
 
    public void assertCompromisedWithEffort() {
-      if (ttc >= 0.5 && ttc < 1000) {
+      if (ttc >= 0.1 && ttc < 1000) {
          System.out.println("+ " + fullName() + " was reached in " + Double.toString(ttc) + " days, as expected.");
          assertTrue(true);
       }
       else {
-         System.out.println(fullName() + ".ttc was supposed to be between 1 and 1000, but was " + Double.toString(ttc) + ".");
+         System.out.println(fullName() + ".ttc was supposed to be between 0.1 and 1000, but was " + Double.toString(ttc) + ".");
          explain();
          assertTrue(false);
       }
@@ -136,7 +136,7 @@ public class AttackStep {
    }
 
    public void assertCompromisedInstantaneouslyFrom(AttackStep expectedParent) {
-      if (ttc - expectedParent.ttc < 0.5 && ttc - expectedParent.ttc > 0) {
+      if (Math.abs(ttc - expectedParent.ttc) < 0.1) {
          System.out.println("+ " + fullName() + " was reached instantaneously from " + expectedParent.fullName() + " as expected.");
          assertTrue(true);
       }
@@ -152,7 +152,7 @@ public class AttackStep {
    }
 
    public void assertCompromisedWithEffortFrom(AttackStep expectedParent) {
-      if (ttc - expectedParent.ttc >= 0.5 && ttc < Double.MAX_VALUE) {
+      if (Math.abs(ttc - expectedParent.ttc) >= 0.1 && ttc < Double.MAX_VALUE) {
          System.out.println("+ " + fullName() + " was reached in " + Double.toString(ttc - expectedParent.ttc) + " days from " + expectedParent.fullName() + " as expected.");
          assertTrue(true);
       }
