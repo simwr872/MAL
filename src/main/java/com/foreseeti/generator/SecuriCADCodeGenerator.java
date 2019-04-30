@@ -253,14 +253,34 @@ public class SecuriCADCodeGenerator {
    }
 
    void printImports() {
-      String imports = "import com.foreseeti.simulator.*; " + "import com.foreseeti.simulator.ConcreteSample;" + "import com.foreseeti.corelib.BaseSample;\n" + "import com.foreseeti.corelib.FClass;\n"
-            + "import com.foreseeti.corelib.FAnnotations.TypeDescription;\n" + "import com.foreseeti.corelib.FAnnotations.TypeName;\n" + "import com.foreseeti.corelib.DefaultValue;\n"
-            + "import com.foreseeti.simulator.Defense;\n" + "import com.foreseeti.simulator.AttackStep;\n" + "import com.google.common.collect.ImmutableSet;\n"
-            + "import com.foreseeti.simulator.MultiParentAsset;\n" + "import com.foreseeti.simulator.BaseLangLink;\n" + "import com.foreseeti.corelib.AssociationManager;\n"
-            + "import com.foreseeti.corelib.util.FProbSet;\n" + "import com.foreseeti.corelib.util.FProb;\n" + "import com.foreseeti.corelib.FAnnotations.*;\n" + "import java.util.ArrayList;\n"
-            + "import java.util.HashSet;\n" + "import java.util.List;\n" + "import java.util.Set;\n" + "import com.foreseeti.corelib.BaseSample;\n" + "import static org.junit.Assert.assertTrue;\n"
-            + "import com.foreseeti.simulator.Asset;\n" + "import com.foreseeti.simulator.AttackStep;\n" + "import com.foreseeti.simulator.AttackStepMax;\n"
-            + "import com.foreseeti.simulator.AttackStepMin;\n" + "import com.foreseeti.simulator.Defense;";
+      String imports = "import com.foreseeti.corelib.AssociationManager;\n"
+            + "import com.foreseeti.corelib.BaseSample;\n"
+            + "import com.foreseeti.corelib.DefaultValue;\n"
+            + "import com.foreseeti.corelib.FAnnotations.Association;\n"
+            + "import com.foreseeti.corelib.FAnnotations.Category;\n"
+            + "import com.foreseeti.corelib.FAnnotations.Display;\n"
+            + "import com.foreseeti.corelib.FAnnotations.DisplayClass;\n"
+            + "import com.foreseeti.corelib.FAnnotations.TypeDescription;\n"
+            + "import com.foreseeti.corelib.FAnnotations.TypeName;\n"
+            + "import com.foreseeti.corelib.FClass;\n"
+            + "import com.foreseeti.corelib.math.FMath;\n"
+            + "import com.foreseeti.corelib.util.FProb;\n"
+            + "import com.foreseeti.corelib.util.FProbSet;\n"
+            + "import com.foreseeti.simulator.Asset;\n"
+            + "import com.foreseeti.simulator.AttackStep;\n"
+            + "import com.foreseeti.simulator.AttackStepMax;\n"
+            + "import com.foreseeti.simulator.AttackStepMin;\n"
+            + "import com.foreseeti.simulator.BaseLangLink;\n"
+            + "import com.foreseeti.simulator.ConcreteSample;\n"
+            + "import com.foreseeti.simulator.Constants;\n"
+            + "import com.foreseeti.simulator.Defense;\n"
+            + "import com.foreseeti.simulator.MultiParentAsset;\n"
+            + "import com.google.common.collect.ImmutableSet;\n"
+            + "import java.util.ArrayList;\n"
+            + "import java.util.HashSet;\n"
+            + "import java.util.List;\n"
+            + "import java.util.Set;\n"
+            + "import static org.junit.Assert.assertTrue;\n";
       writer.println(imports);
    }
 
@@ -553,31 +573,30 @@ public class SecuriCADCodeGenerator {
    }
 
    protected void printLocalAttackStepSpecialization(Asset asset) {
-      writer.println("public class LocalAttackStepMin extends AttackStepMin {");
-      writer.println("@Override");
-      writer.println("public FClass getContainerFClass() {");
-      writer.println(String.format("return %s.this;", capitalize(asset.getName())));
-      writer.println("}");
-      writer.println("LocalAttackStepMin() {}");
-      writer.println("LocalAttackStepMin(LocalAttackStepMin other) {");
-      writer.println("super(other);");
-      writer.println("}");
-      writer.println("}");
+      writer.println("  public class LocalAttackStepMin extends AttackStepMin {");
+      writer.println("    @Override");
+      writer.println("    public FClass getContainerFClass() {");
+      writer.println(String.format("      return %s.this;", capitalize(asset.getName())));
+      writer.println("    }");
+      writer.println("    LocalAttackStepMin() {}");
+      writer.println("    LocalAttackStepMin(LocalAttackStepMin other) {");
+      writer.println("      super(other);");
+      writer.println("    }");
+      writer.println("  }");
 
-      writer.println("public class LocalAttackStepMax extends AttackStepMax {");
+      writer.println("  public class LocalAttackStepMax extends AttackStepMax {");
 
-      writer.println("@Override");
-      writer.println("public FClass getContainerFClass() {");
-      writer.println(String.format("return %s.this;", capitalize(asset.getName())));
-      writer.println("}");
+      writer.println("    @Override");
+      writer.println("    public FClass getContainerFClass() {");
+      writer.println(String.format("      return %s.this;", capitalize(asset.getName())));
+      writer.println("    }");
 
-      writer.println("LocalAttackStepMax() {}");
+      writer.println("    LocalAttackStepMax() {}");
 
-      writer.println("LocalAttackStepMax(LocalAttackStepMax other) {");
-      writer.println("super(other);");
-      writer.println("}");
-      writer.println("      public double defaultLocalTtc(BaseSample sample, AttackStep caller)  {return 0.00001157407;}");
-      writer.println("}");
+      writer.println("    LocalAttackStepMax(LocalAttackStepMax other) {");
+      writer.println("      super(other);");
+      writer.println("    }");
+      writer.println("  }");
    }
 
    private String fileToBase64(File file) throws IOException {
@@ -707,7 +726,7 @@ public class SecuriCADCodeGenerator {
 
    protected void printDisableDeclaration(AttackStep attackStep, Asset asset) {
       boolean max = attackStep.getAttackStepType().equals("&");
-      writer.print("   public class Disable extends ");
+      writer.print("    public class Disable extends ");
       if (!attackStep.getSuperAttackStepName().equals("")) {
          writer.print(attackStep.getSuperAttackStepName() + ".Disable");
       }
@@ -728,18 +747,24 @@ public class SecuriCADCodeGenerator {
    }
 
    protected void printDefenseConstructor(AttackStep attackStep) {
-      writer.print("   public " + capitalize(attackStep.getName()) + "(Boolean enabled){");
-      writer.print("      super(enabled);");
+      writer.println("    public " + capitalize(attackStep.getName()) + "(Boolean enabled) {");
+      writer.println("      super(enabled);");
       writer.println("      disable = new Disable();");
-      writer.println("   }\n");
+      if (attackStep.ttcFunction.equals("BernoulliDistribution")) {
+        writer.println(String.format("      setEvidenceDistribution(FMath.getBernoulliDist(%s));", attackStep.ttcParameters.get(0)));
+      }
+      writer.println("    }");
       AttackStep baseAttackStep = attackStep.getBaseAttackStep();
       if (baseAttackStep == null) {
          baseAttackStep = attackStep;
       }
-      writer.print(String.format("   public %s(%s.%s other) {", capitalize(baseAttackStep.getName()), capitalize(baseAttackStep.getAsset().getName()), capitalize(baseAttackStep.getName())));
-      writer.println("super(other);");
-      writer.println("disable = new Disable();");
-      writer.println("   }\n");
+      writer.println(String.format("    public %s(%s.%s other) {", capitalize(baseAttackStep.getName()), capitalize(baseAttackStep.getAsset().getName()), capitalize(baseAttackStep.getName())));
+      writer.println("      super(other);");
+      writer.println("      disable = new Disable();");
+      if (attackStep.ttcFunction.equals("BernoulliDistribution")) {
+        writer.println(String.format("      setEvidenceDistribution(FMath.getBernoulliDist(%s));", attackStep.ttcParameters.get(0)));
+      }
+      writer.println("    }\n");
 
    }
 
@@ -787,7 +812,7 @@ public class SecuriCADCodeGenerator {
    }
 
    void printAttackStepDefinition(AttackStep attackStep) {
-      writer.print("   public class " + capitalize(attackStep.getName()) + " extends ");
+      writer.print("  public class " + capitalize(attackStep.getName()) + " extends ");
       String attackStepTypeString = "";
       if (!attackStep.getSuperAttackStepName().equals("")) {
          attackStepTypeString = attackStep.getSuperAttackStepName();
@@ -810,16 +835,60 @@ public class SecuriCADCodeGenerator {
       assert (!attackStepTypeString.equals(""));
 
       writer.println(attackStepTypeString + " {");
-      writer.println(String.format("   public %s(%s.%s other) {", capitalize(attackStep.getName()), capitalize(baseAttackStep.getAsset().getName()), capitalize(baseAttackStep.getName())));
+      writer.println(String.format("    public %s(%s.%s other) {", capitalize(attackStep.getName()), capitalize(baseAttackStep.getAsset().getName()), capitalize(baseAttackStep.getName())));
       writer.println("      super(other);");
-      writer.println("   }");
-      writer.println(String.format("   public %s() {", capitalize(attackStep.getName())));
-      writer.println("   }");
+      writer.println("    }");
+      writer.println(String.format("    public %s() {", capitalize(attackStep.getName())));
+      writer.println("    }");
       printSetExpectedParents(attackStep);
       printUpdateChildren(attackStep);
+      printLocalTtc(attackStep);
 
-      writer.println("   }\n");
+      writer.println("  }\n");
    }
+
+  private void printLocalTtc(AttackStep attackStep) {
+    if (!attackStep.ttcFunction.equals("Default")) {
+      writer.println("    @Override");
+      writer.println("    public double defaultLocalTtc(BaseSample sample, AttackStep caller) {");
+
+      switch (attackStep.ttcFunction) {
+        case "Zero":
+          writer.println("      return Constants.oneSecond;");
+          break;
+        case "BernoulliDistribution":
+          writer.println(String.format("      if (FMath.getBernoulliDist(%f).sample()) {", attackStep.ttcParameters.get(0)));
+          writer.println("        return Constants.oneSecond;");
+          writer.println("      } else {");
+          writer.println("        return Constants.infinity;");
+          writer.println("      }");
+          break;
+        case "TruncatedNormalDistribution":
+          writer.println(String.format("      return FMath.getTruncatedNormalDist(%f, %f).sample();", attackStep.ttcParameters.get(0), attackStep.ttcParameters.get(1)));
+          break;
+        case "ExponentialDistribution":
+          writer.println(String.format("      return FMath.getExponentialDist(%f).sample();", attackStep.ttcParameters.get(0)));
+          break;
+        case "GammaDistribution":
+          writer.println(String.format("      return FMath.getGammaDist(%f, %f).sample();", attackStep.ttcParameters.get(0), attackStep.ttcParameters.get(1)));
+          break;
+        case "LogNormalDistribution":
+          writer.println(String.format("      return FMath.getLogNormalDist(%f, %f).sample();", attackStep.ttcParameters.get(0), attackStep.ttcParameters.get(1)));
+          break;
+        case "ParetoDistribution":
+          writer.println(String.format("      return FMath.getParetoDist(%f, %f).sample();", attackStep.ttcParameters.get(0), attackStep.ttcParameters.get(1)));
+          break;
+        case "Infinity":
+          writer.println("      return Constants.infinity;");
+          break;
+        default:
+          System.err.println(String.format("Error: Unsupported distribution \"%s\" for attack step %s.%s", attackStep.ttcFunction, attackStep.getAsset().name, attackStep.name));
+          System.err.println("       Using \"Constants.oneSecond\" instead");
+          writer.println("      return Constants.oneSecond;");
+      }
+      writer.println("    }");
+    }
+  }
 
    void printUpdateChildren(AttackStep attackStep) {
       if (!attackStep.steps.isEmpty()) {
