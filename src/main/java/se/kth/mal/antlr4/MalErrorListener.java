@@ -48,6 +48,11 @@ public class MalErrorListener extends BaseErrorListener {
    }
 
    public void error(File file, int line, int index, String text, String msg) {
+      if (text.equals("<EOF>")) {
+         System.err.printf("%s:%s:%s: error: %s\n", file.getName(), line, index, msg);
+         this.errors++;
+         return;
+      }
       Stream<String> lines = null;
       try {
          lines = Files.lines(file.toPath());
