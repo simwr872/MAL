@@ -74,7 +74,7 @@ public class AttackStep {
    }
 
    public void assertCompromisedInstantaneously() {
-      if (ttc < 0.1) {
+      if (ttc < 1.0/1440) {
          System.out.println("+ " + fullName() + " was reached instantaneously as expected.");
          assertTrue(true);
       }
@@ -86,12 +86,12 @@ public class AttackStep {
    }
 
    public void assertCompromisedWithEffort() {
-      if (ttc >= 0.1 && ttc < 1000) {
+      if (ttc >= 1.0/1440 && ttc < 1000) {
          System.out.println("+ " + fullName() + " was reached in " + Double.toString(ttc) + " days, as expected.");
          assertTrue(true);
       }
       else {
-         System.out.println(fullName() + ".ttc was supposed to be between 0.1 and 1000, but was " + Double.toString(ttc) + ".");
+         System.out.println(fullName() + ".ttc was supposed to be between 1/1440 and 1000, but was " + Double.toString(ttc) + ".");
          explain();
          assertTrue(false);
       }
