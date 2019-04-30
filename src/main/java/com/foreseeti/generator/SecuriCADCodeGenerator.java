@@ -13,12 +13,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.Properties;
 
 import org.apache.batik.transcoder.TranscoderException;
 import org.apache.batik.transcoder.TranscoderInput;
@@ -224,6 +227,48 @@ public class SecuriCADCodeGenerator {
       writer = new PrintWriter(sourceCodeFile, "UTF-8");
       createDefaultAttacker();
       writer.close();
+
+      sourceCodeFile = path + "MetaData.java";
+      writer = new PrintWriter(sourceCodeFile, "UTF-8");
+      writeMetaData();
+      writer.close();
+   }
+
+   private void writeMetaData() {
+      Properties meta = new Properties();
+      try {
+         InputStream is = this.getClass().getClassLoader().getResourceAsStream("metadata.properties");
+         meta.load(is);
+         is.close();
+      }
+      catch (IOException e) {
+         e.printStackTrace();
+      }
+
+      String id = "language_not_named";
+      String version = "0.0.0";
+      if (this.model.meta.containsKey("id")) {
+         id = this.model.meta.get("id");
+      }
+      if (this.model.meta.containsKey("version")) {
+         version = this.model.meta.get("version");
+      }
+
+      writer.println("package auto;");
+      writer.println("import java.util.HashMap;");
+      writer.println("import java.util.Map;");
+      writer.println("public final class MetaData {");
+      writer.printf("public static final String MAL_VERSION = \"%s\";\n", meta.getProperty("version"));
+      writer.printf("public static final String ID = \"%s\";\n", id);
+      writer.printf("public static final String VERSION = \"%s\";\n", version);
+      writer.println("public static Map<String, String> DATA;");
+      writer.println("static {");
+      writer.println("DATA = new HashMap<>();");
+      for (Entry<String, String> entry : this.model.meta.entrySet()) {
+         writer.printf("DATA.put(\"%s\", \"%s\");\n", entry.getKey(), entry.getValue());
+      }
+      writer.println("}");
+      writer.println("}");
    }
 
    void printDefaultClassMembers(Asset asset) {

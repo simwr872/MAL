@@ -1,6 +1,6 @@
 grammar Mal;
 
-compilationUnit: (associations | category | include)* EOF;
+compilationUnit: (associations | category | include | langMeta)* EOF;
 
 // Revisit where meta is placed?
 meta: metaType Colon String;
@@ -8,6 +8,8 @@ metaType: Info | Rationale | Assumptions;
 type: LeftBracket Identifier RightBracket;
 
 include: Include (Identifier | Dot | Separator)+;
+
+langMeta: Defense Identifier Colon String;
 
 associations: Associations LeftBrace association* RightBrace;
 association: Identifier type multiplicity LeftRelation Identifier RightRelation multiplicity type Identifier meta*;

@@ -16,6 +16,7 @@ import se.kth.mal.MalParser.AttackstepContext;
 import se.kth.mal.MalParser.CategoryContext;
 import se.kth.mal.MalParser.ExprContext;
 import se.kth.mal.MalParser.IncludeContext;
+import se.kth.mal.MalParser.LangMetaContext;
 import se.kth.mal.MalParser.MetaContext;
 import se.kth.mal.MalParser.OperatorContext;
 import se.kth.mal.MalParser.StatementContext;
@@ -51,6 +52,13 @@ public class MalListener extends MalBaseListener {
    @Override
    public void exitCategory(CategoryContext ctx) {
       this.category = "";
+   }
+
+   @Override
+   public void enterLangMeta(LangMetaContext ctx) {
+      String val = ctx.String().getText();
+      val = val.substring(1, val.length() - 1);
+      this.model.meta.put(ctx.Identifier().getText(), val);
    }
 
    public DebugInfo debug(ParserRuleContext ctx) {
