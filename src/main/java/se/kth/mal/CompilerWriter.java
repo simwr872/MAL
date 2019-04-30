@@ -532,7 +532,7 @@ public class CompilerWriter {
    }
 
    void printLocalTtc(AttackStep attackStep) {
-      if (attackStep.asset.superAssetName.equals("") || !attackStep.ttcFunction.equals("Default")) {
+      if (attackStep.asset.superAssetName.equals("")) {
          writer.println("      @Override");
          writer.println("      public double localTtc() {");
          writer.println("         return ttcHashMap.get(\"" + attackStep.asset.name + "." + attackStep.name + "\");");
