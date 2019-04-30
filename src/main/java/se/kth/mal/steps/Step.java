@@ -22,6 +22,13 @@ public class Step {
    }
 
    /**
+    * Removes the last connection and sets it as attackstep
+    */
+   public void popStep() {
+      this.to = this.connections.remove(this.connections.size() - 1).field;
+   }
+
+   /**
     * Gets the last connections asset. It is also this asset on which the target
     * attack step must exist.
     *

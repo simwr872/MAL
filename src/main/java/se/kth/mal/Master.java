@@ -1,7 +1,6 @@
 package se.kth.mal;
 
 import java.io.File;
-import java.io.IOException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -15,25 +14,36 @@ import com.foreseeti.generator.SecuriCADCodeGenerator;
 
 public class Master {
 
-   public Master(String malFilePath, String testsOutFolderPath, String javaOutFolderPath, String packageName, boolean useForeseeti, String visualFolderPath) {
-      try {
-         if (useForeseeti) {
-            System.out.println(">>> Using foreseeti backend <<<");
-            SecuriCADCodeGenerator generator = new SecuriCADCodeGenerator(malFilePath, testsOutFolderPath, javaOutFolderPath, packageName, visualFolderPath);
-            generator.generate();
-         }
-         else {
-            System.out.println(">>> Using MAL Compiler <<<");
-            File malFile = new File(malFilePath);
-            String inFolderPath = malFile.getParentFile().getAbsolutePath();
-            String inFileName = malFile.getName();
-            new CompilerWriter(inFolderPath, inFileName, inFolderPath, javaOutFolderPath, packageName, javaOutFolderPath);
-         }
+   public Master(String inputPath, String outputPath, String packageName, boolean foreseeti, String iconPath) {
+      File input = new File(inputPath);
+      if (!input.exists() || !input.isFile()) {
+         System.err.printf("Invalid input file '%s'\n", input.getAbsolutePath());
+         System.exit(1);
       }
-      catch (IllegalArgumentException | IOException e) {
-         e.printStackTrace();
+
+      File output = new File(outputPath);
+      if (!output.exists()) {
+         output.mkdirs();
       }
-      System.out.println("Complete");
+      if (!output.isDirectory()) {
+         System.err.printf("Invalid output path '%s'\n", output.getAbsolutePath());
+         System.exit(1);
+      }
+
+      if (foreseeti) {
+         File icon = null;
+         if (iconPath != null) {
+            icon = new File(iconPath);
+            if (!icon.exists() || !icon.isDirectory()) {
+               System.err.printf("Invalid icon path '%s'\n", icon.getAbsolutePath());
+               System.exit(1);
+            }
+         }
+         new SecuriCADCodeGenerator(input, output, packageName, icon);
+      }
+      else {
+         new CompilerWriter(input, output, packageName);
+      }
    }
 
    public static void main(String[] args) throws Exception {
@@ -69,8 +79,7 @@ public class Master {
 
       try {
          cmd = parser.parse(options, args);
-         new Master(cmd.getOptionValue("input").trim(), cmd.getOptionValue("tests"), cmd.getOptionValue("output").trim(), cmd.getOptionValue("package").trim(), cmd.hasOption("foreseeti"),
-               cmd.getOptionValue("visual"));
+         new Master(cmd.getOptionValue("input").trim(), cmd.getOptionValue("output").trim(), cmd.getOptionValue("package").trim(), cmd.hasOption("foreseeti"), cmd.getOptionValue("visual"));
       }
       catch (ParseException e) {
          System.err.println(e.getMessage());

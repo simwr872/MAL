@@ -61,28 +61,61 @@ public class Attacker {
    }
 
    public void customizeTtc(String name, String distribution) {
-      ttcHashMap.put(name, Attacker.parseDistribution(distribution));
+      ttcHashMap.put(name, Attacker.parseDistribution(distribution, isDefense(name)));
    }
 
-   public static double parseDistribution(String dist) {
+   public static double parseDistribution(String dist, boolean defense) {
       Pattern pattern = Pattern.compile("([a-z]+)\\(*([0-9.]+)*,*([0-9.]+)*\\)*", Pattern.CASE_INSENSITIVE);
       Matcher matcher = pattern.matcher(dist);
       matcher.matches();
+      double a = 0;
+      double b = 0;
+      try {
+         a = Double.valueOf(matcher.group(2));
+         b = Double.valueOf(matcher.group(3));
+      } catch(Exception e) {
+      }
       switch (matcher.group(1)) {
-         case "Zero":
-            return AttackStep.oneSecond;
-         case "Infinity":
-            return AttackStep.infinity;
+         case "BernoulliDistribution":
+            if(defense) {
+               return a < 0.5 ? 0 : Double.MAX_VALUE;
+            } else {
+               return a < 0.5 ? Double.MAX_VALUE : 0;
+            }
+         case "BinomialDistribution":
+            return a*b;
          case "ExponentialDistribution":
-            return Double.valueOf(matcher.group(2));
+            return 1/a;
          case "GammaDistribution":
-            return Double.valueOf(matcher.group(2)) * Double.valueOf(matcher.group(3));
+            return a/b;
+         case "Infinity":
+            return Double.MAX_VALUE;
+         case "LogNormalDistribution":
+            return Math.exp(a + b/2);
+         case "NormalDistribution":
+            return a;
+         case "ParetoDistribution":
+            return a <= 1 ? Double.MAX_VALUE : a*b / (a-1);
+         case "TruncatedNormalDistribution":
+            return a;
          case "UniformDistribution":
-            return (Double.valueOf(matcher.group(3)) - Double.valueOf(matcher.group(2))) / 2;
+            return (a+b)/2;
+         case "Zero":
+            return 0;
          default:
             System.err.printf("No matching distribution for: %s\n", dist);
-            return AttackStep.oneSecond;
+            return 0;
       }
+   }
+
+   private boolean isDefense(String name) {
+      name = Character.toLowerCase(name.charAt(0)) + name.substring(1);
+      for (Defense defense : Defense.allDefenses) {
+         if(defense.disable.fullName().equals(name)) {
+            return true;
+         }
+      }
+      return false;
    }
 
    private Map<String, Double> readProfile(Properties profile) {
@@ -92,7 +125,7 @@ public class Attacker {
          if(ttcHashMap.containsKey(name) ) {
             profileMap.put(name, ttcHashMap.get(name));
          } else {
-            profileMap.put(name, parseDistribution(profile.getProperty(name)));
+            profileMap.put(name, parseDistribution(profile.getProperty(name), isDefense(name)));
          }
       }
       ttcHashMap.clear();

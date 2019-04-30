@@ -10,6 +10,19 @@ public class RecursiveConnection extends Connection {
       super(field);
    }
 
+   @Override public Connection reverse() {
+      Connection connection = new RecursiveConnection("");
+      connection.previousAsset = this.asset;
+      connection.previousCast = this.cast;
+      connection.previousField = this.field;
+      connection.previousMultiplicity = this.multiplicity;
+      connection.asset = this.previousAsset;
+      connection.cast = this.previousCast;
+      connection.field = this.previousField;
+      connection.multiplicity = this.previousMultiplicity;
+      return connection;
+   }
+
    @Override
    public String print(PrintWriter writer, String prefix, String suffix) {
       // Print occurs inside a function so we have to simulate something
@@ -17,11 +30,16 @@ public class RecursiveConnection extends Connection {
       String set = decapitalize(asset) + "_" + RandomStringUtils.randomAlphabetic(5);
       String pool = decapitalize(asset) + "_" + RandomStringUtils.randomAlphabetic(5);
       String item = decapitalize(asset) + "_" + RandomStringUtils.randomAlphabetic(5);
-      writer.printf("Set<%s> %s = new HashSet<>();\n", asset, set);
-      writer.printf("List<%s> %s = new ArrayList<>();\n", asset, pool);
+      writer.printf("java.util.Set<%s> %s = new java.util.HashSet<>();\n", asset, set);
+      writer.printf("java.util.List<%s> %s = new java.util.ArrayList<>();\n", asset, pool);
       // Add ourselves to the returned set and current pool
-      writer.printf("%s.add(%s);\n", set, prefix.substring(0, prefix.length() - 1));
-      writer.printf("%s.add(%s);\n", pool, prefix.substring(0, prefix.length() - 1));
+      if(!prefix.isEmpty()) {
+         writer.printf("%s.add(%s);\n", set, prefix.substring(0, prefix.length() - 1));
+         writer.printf("%s.add(%s);\n", pool, prefix.substring(0, prefix.length() - 1));
+      } else {
+         writer.printf("%s.add(%s.this);\n", set, asset);
+         writer.printf("%s.add(%s.this);\n", pool, asset);
+      }
 
       writer.printf("%s %s;\n", asset, item);
       writer.printf("while(!%s.isEmpty()) {\n", pool);

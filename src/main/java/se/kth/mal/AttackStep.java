@@ -19,12 +19,12 @@ public class AttackStep {
    Boolean                    mostImportant             = false;
    Boolean                    visibility;
    String                     attackStepType;
-   String                     name;
+   public String              name;
    String                     description;
    String                     rationale;
-   String                     ttcFunction               = "Default";
-   List<Float>                ttcParameters             = new ArrayList<>();
-   List<String>               existenceRequirementRoles = new ArrayList<>();
+   public String              ttcFunction               = "Default";
+   public List<Float>         ttcParameters             = new ArrayList<>();
+   public List<String>        existenceRequirementRoles = new ArrayList<>();
    CompilerModel              model;
 
    public static final String DEFENSE_TYPE              = "#";
@@ -39,6 +39,23 @@ public class AttackStep {
       this.attackStepType = attackStepType;
       this.name = name;
       this.model = model;
+   }
+
+   public String getDistribution() {
+      if (ttcFunction.equals("Default")) {
+         return "Zero";
+      }
+      else {
+         String s = ttcFunction;
+         if (!ttcParameters.isEmpty()) {
+            List<String> params = new ArrayList<>();
+            for (Float p : ttcParameters) {
+               params.add(String.valueOf(p));
+            }
+            s += "(" + String.join(",", params) + ")";
+         }
+         return s;
+      }
    }
 
    public String fullDefaultName() {
@@ -178,5 +195,9 @@ public class AttackStep {
 
    public String getRationale() {
       return rationale;
+   }
+
+   public void setDescription(String text) {
+      this.description = text;
    }
 }
