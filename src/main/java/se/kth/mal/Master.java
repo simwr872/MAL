@@ -1,6 +1,7 @@
 package se.kth.mal;
 
 import java.io.File;
+import java.util.Locale;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -47,6 +48,8 @@ public class Master {
    }
 
    public static void main(String[] args) throws Exception {
+      Locale.setDefault(Locale.ROOT);
+
       Options options = new Options();
 
       Option input = new Option("i", "input", true, "input mal file path");
