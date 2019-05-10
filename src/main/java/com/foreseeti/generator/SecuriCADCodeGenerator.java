@@ -13,12 +13,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.Properties;
 
 import org.apache.batik.transcoder.TranscoderException;
 import org.apache.batik.transcoder.TranscoderInput;
@@ -171,6 +174,10 @@ public class SecuriCADCodeGenerator {
       String path = outputFolder + "/" + packagePath + "/";
       (new File(path)).mkdirs();
 
+      writer = new PrintWriter(path + "MetaData.java", "UTF-8");
+      writeMetaData();
+      writer.close();
+
       for (Asset asset : model.getAssets()) {
          System.out.println("Writing the Java class corresponding to asset " + asset.getName());
          String sourceCodeFile = path + asset.getName() + ".java";
@@ -224,6 +231,45 @@ public class SecuriCADCodeGenerator {
       writer = new PrintWriter(sourceCodeFile, "UTF-8");
       createDefaultAttacker();
       writer.close();
+
+   }
+
+   private void writeMetaData() {
+      Properties meta = new Properties();
+      try {
+         InputStream is = this.getClass().getClassLoader().getResourceAsStream("metadata.properties");
+         meta.load(is);
+         is.close();
+      }
+      catch (IOException e) {
+         e.printStackTrace();
+      }
+
+      if (!this.model.meta.containsKey("id")) {
+         throw new Error("Language is missing required metadata `id`. Please define `#id: \"\"`");
+      }
+      if (!this.model.meta.containsKey("version")) {
+         throw new Error("Language is missing required metadata `version`. Please define `#version: \"\"`");
+      }
+      String id = this.model.meta.get("id");
+      String version = this.model.meta.get("version");
+
+      writer.println("package auto;");
+      writer.println("import java.util.HashMap;");
+      writer.println("import java.util.Map;");
+      writer.println("public final class MetaData {");
+      writer.printf("public static final String MAL_VERSION = \"%s\";\n", meta.getProperty("version"));
+      writer.printf("public static final String ID = \"%s\";\n", id);
+      writer.printf("public static final String VERSION = \"%s\";\n", version);
+      writer.println("public static Map<String, String> DATA;");
+      writer.println("static {");
+      writer.println("DATA = new HashMap<>();");
+      for (Entry<String, String> entry : this.model.meta.entrySet()) {
+         writer.printf("DATA.put(\"%s\", \"%s\");\n", entry.getKey(), entry.getValue());
+      }
+      writer.println("}");
+      writer.println("}");
+      System.out.printf("%s, version %s\n", id, version);
    }
 
    void printDefaultClassMembers(Asset asset) {
@@ -253,33 +299,14 @@ public class SecuriCADCodeGenerator {
    }
 
    void printImports() {
-      String imports = "import com.foreseeti.corelib.AssociationManager;\n"
-            + "import com.foreseeti.corelib.BaseSample;\n"
-            + "import com.foreseeti.corelib.DefaultValue;\n"
-            + "import com.foreseeti.corelib.FAnnotations.Association;\n"
-            + "import com.foreseeti.corelib.FAnnotations.Category;\n"
-            + "import com.foreseeti.corelib.FAnnotations.Display;\n"
-            + "import com.foreseeti.corelib.FAnnotations.DisplayClass;\n"
-            + "import com.foreseeti.corelib.FAnnotations.TypeDescription;\n"
-            + "import com.foreseeti.corelib.FAnnotations.TypeName;\n"
-            + "import com.foreseeti.corelib.FClass;\n"
-            + "import com.foreseeti.corelib.math.FMath;\n"
-            + "import com.foreseeti.corelib.util.FProb;\n"
-            + "import com.foreseeti.corelib.util.FProbSet;\n"
-            + "import com.foreseeti.simulator.Asset;\n"
-            + "import com.foreseeti.simulator.AttackStep;\n"
-            + "import com.foreseeti.simulator.AttackStepMax;\n"
-            + "import com.foreseeti.simulator.AttackStepMin;\n"
-            + "import com.foreseeti.simulator.BaseLangLink;\n"
-            + "import com.foreseeti.simulator.ConcreteSample;\n"
-            + "import com.foreseeti.simulator.Constants;\n"
-            + "import com.foreseeti.simulator.Defense;\n"
-            + "import com.foreseeti.simulator.MultiParentAsset;\n"
-            + "import com.google.common.collect.ImmutableSet;\n"
-            + "import java.util.ArrayList;\n"
-            + "import java.util.HashSet;\n"
-            + "import java.util.List;\n"
-            + "import java.util.Set;\n"
+      String imports = "import com.foreseeti.corelib.AssociationManager;\n" + "import com.foreseeti.corelib.BaseSample;\n" + "import com.foreseeti.corelib.DefaultValue;\n"
+            + "import com.foreseeti.corelib.FAnnotations.Association;\n" + "import com.foreseeti.corelib.FAnnotations.Category;\n" + "import com.foreseeti.corelib.FAnnotations.Display;\n"
+            + "import com.foreseeti.corelib.FAnnotations.DisplayClass;\n" + "import com.foreseeti.corelib.FAnnotations.TypeDescription;\n" + "import com.foreseeti.corelib.FAnnotations.TypeName;\n"
+            + "import com.foreseeti.corelib.FClass;\n" + "import com.foreseeti.corelib.math.FMath;\n" + "import com.foreseeti.corelib.util.FProb;\n" + "import com.foreseeti.corelib.util.FProbSet;\n"
+            + "import com.foreseeti.simulator.Asset;\n" + "import com.foreseeti.simulator.AttackStep;\n" + "import com.foreseeti.simulator.AttackStepMax;\n"
+            + "import com.foreseeti.simulator.AttackStepMin;\n" + "import com.foreseeti.simulator.BaseLangLink;\n" + "import com.foreseeti.simulator.ConcreteSample;\n"
+            + "import com.foreseeti.simulator.Constants;\n" + "import com.foreseeti.simulator.Defense;\n" + "import com.foreseeti.simulator.MultiParentAsset;\n"
+            + "import com.google.common.collect.ImmutableSet;\n" + "import java.util.ArrayList;\n" + "import java.util.HashSet;\n" + "import java.util.List;\n" + "import java.util.Set;\n"
             + "import static org.junit.Assert.assertTrue;\n";
       writer.println(imports);
    }
@@ -751,7 +778,7 @@ public class SecuriCADCodeGenerator {
       writer.println("      super(enabled);");
       writer.println("      disable = new Disable();");
       if (attackStep.ttcFunction.equals("BernoulliDistribution")) {
-        writer.println(String.format("      setEvidenceDistribution(FMath.getBernoulliDist(%s));", attackStep.ttcParameters.get(0)));
+         writer.println(String.format("      setEvidenceDistribution(FMath.getBernoulliDist(%s));", attackStep.ttcParameters.get(0)));
       }
       writer.println("    }");
       AttackStep baseAttackStep = attackStep.getBaseAttackStep();
@@ -762,7 +789,7 @@ public class SecuriCADCodeGenerator {
       writer.println("      super(other);");
       writer.println("      disable = new Disable();");
       if (attackStep.ttcFunction.equals("BernoulliDistribution")) {
-        writer.println(String.format("      setEvidenceDistribution(FMath.getBernoulliDist(%s));", attackStep.ttcParameters.get(0)));
+         writer.println(String.format("      setEvidenceDistribution(FMath.getBernoulliDist(%s));", attackStep.ttcParameters.get(0)));
       }
       writer.println("    }\n");
 
@@ -847,48 +874,48 @@ public class SecuriCADCodeGenerator {
       writer.println("  }\n");
    }
 
-  private void printLocalTtc(AttackStep attackStep) {
-    if (!attackStep.ttcFunction.equals("Default")) {
-      writer.println("    @Override");
-      writer.println("    public double defaultLocalTtc(BaseSample sample, AttackStep caller) {");
+   private void printLocalTtc(AttackStep attackStep) {
+      if (!attackStep.ttcFunction.equals("Default")) {
+         writer.println("    @Override");
+         writer.println("    public double defaultLocalTtc(BaseSample sample, AttackStep caller) {");
 
-      switch (attackStep.ttcFunction) {
-        case "Zero":
-          writer.println("      return Constants.oneSecond;");
-          break;
-        case "BernoulliDistribution":
-          writer.println(String.format("      if (FMath.getBernoulliDist(%f).sample()) {", attackStep.ttcParameters.get(0)));
-          writer.println("        return Constants.oneSecond;");
-          writer.println("      } else {");
-          writer.println("        return Constants.infinity;");
-          writer.println("      }");
-          break;
-        case "TruncatedNormalDistribution":
-          writer.println(String.format("      return FMath.getTruncatedNormalDist(%f, %f).sample();", attackStep.ttcParameters.get(0), attackStep.ttcParameters.get(1)));
-          break;
-        case "ExponentialDistribution":
-          writer.println(String.format("      return FMath.getExponentialDist(%f).sample();", attackStep.ttcParameters.get(0)));
-          break;
-        case "GammaDistribution":
-          writer.println(String.format("      return FMath.getGammaDist(%f, %f).sample();", attackStep.ttcParameters.get(0), attackStep.ttcParameters.get(1)));
-          break;
-        case "LogNormalDistribution":
-          writer.println(String.format("      return FMath.getLogNormalDist(%f, %f).sample();", attackStep.ttcParameters.get(0), attackStep.ttcParameters.get(1)));
-          break;
-        case "ParetoDistribution":
-          writer.println(String.format("      return FMath.getParetoDist(%f, %f).sample();", attackStep.ttcParameters.get(0), attackStep.ttcParameters.get(1)));
-          break;
-        case "Infinity":
-          writer.println("      return Constants.infinity;");
-          break;
-        default:
-          System.err.println(String.format("Error: Unsupported distribution \"%s\" for attack step %s.%s", attackStep.ttcFunction, attackStep.getAsset().name, attackStep.name));
-          System.err.println("       Using \"Constants.oneSecond\" instead");
-          writer.println("      return Constants.oneSecond;");
+         switch (attackStep.ttcFunction) {
+            case "Zero":
+               writer.println("      return Constants.oneSecond;");
+               break;
+            case "BernoulliDistribution":
+               writer.println(String.format("      if (FMath.getBernoulliDist(%f).sample()) {", attackStep.ttcParameters.get(0)));
+               writer.println("        return Constants.oneSecond;");
+               writer.println("      } else {");
+               writer.println("        return Constants.infinity;");
+               writer.println("      }");
+               break;
+            case "TruncatedNormalDistribution":
+               writer.println(String.format("      return FMath.getTruncatedNormalDist(%f, %f).sample();", attackStep.ttcParameters.get(0), attackStep.ttcParameters.get(1)));
+               break;
+            case "ExponentialDistribution":
+               writer.println(String.format("      return FMath.getExponentialDist(%f).sample();", attackStep.ttcParameters.get(0)));
+               break;
+            case "GammaDistribution":
+               writer.println(String.format("      return FMath.getGammaDist(%f, %f).sample();", attackStep.ttcParameters.get(0), attackStep.ttcParameters.get(1)));
+               break;
+            case "LogNormalDistribution":
+               writer.println(String.format("      return FMath.getLogNormalDist(%f, %f).sample();", attackStep.ttcParameters.get(0), attackStep.ttcParameters.get(1)));
+               break;
+            case "ParetoDistribution":
+               writer.println(String.format("      return FMath.getParetoDist(%f, %f).sample();", attackStep.ttcParameters.get(0), attackStep.ttcParameters.get(1)));
+               break;
+            case "Infinity":
+               writer.println("      return Constants.infinity;");
+               break;
+            default:
+               System.err.println(String.format("Error: Unsupported distribution \"%s\" for attack step %s.%s", attackStep.ttcFunction, attackStep.getAsset().name, attackStep.name));
+               System.err.println("       Using \"Constants.oneSecond\" instead");
+               writer.println("      return Constants.oneSecond;");
+         }
+         writer.println("    }");
       }
-      writer.println("    }");
-    }
-  }
+   }
 
    void printUpdateChildren(AttackStep attackStep) {
       if (!attackStep.steps.isEmpty()) {

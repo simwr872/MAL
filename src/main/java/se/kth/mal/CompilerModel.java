@@ -26,6 +26,7 @@ public class CompilerModel {
    private List<Association>        associations = new ArrayList<>();
    private Map<Association, String> links        = new HashMap<>();
    private int                      errors;
+   public Map<String, String>       meta         = new HashMap<>();
 
    private List<File>               parsedFiles  = new ArrayList<>();
 
