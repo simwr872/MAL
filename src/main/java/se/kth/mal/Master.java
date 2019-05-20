@@ -83,6 +83,7 @@ public class Master {
       try {
          cmd = parser.parse(options, args);
          new Master(cmd.getOptionValue("input").trim(), cmd.getOptionValue("output").trim(), cmd.getOptionValue("package").trim(), cmd.hasOption("foreseeti"), cmd.getOptionValue("visual"));
+         System.out.println("Done");
       }
       catch (ParseException e) {
          System.err.println(e.getMessage());
