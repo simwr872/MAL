@@ -141,7 +141,7 @@ public class Step {
    }
 
    public void print(PrintWriter writer, String format, String prefix, String suffix, boolean endStep) {
-      int close = printCast(writer);
+      int close = 0;// printCast(writer);
       for (Connection connection : connections) {
          prefix = connection.print(writer, prefix, suffix);
          close += (connection.cast.isEmpty() ? 1 : 2);

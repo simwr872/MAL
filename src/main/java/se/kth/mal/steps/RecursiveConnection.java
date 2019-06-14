@@ -10,7 +10,8 @@ public class RecursiveConnection extends Connection {
       super(field);
    }
 
-   @Override public Connection reverse() {
+   @Override
+   public Connection reverse() {
       Connection connection = new RecursiveConnection("");
       connection.previousAsset = this.asset;
       connection.previousCast = this.cast;
@@ -33,10 +34,11 @@ public class RecursiveConnection extends Connection {
       writer.printf("java.util.Set<%s> %s = new java.util.HashSet<>();\n", asset, set);
       writer.printf("java.util.List<%s> %s = new java.util.ArrayList<>();\n", asset, pool);
       // Add ourselves to the returned set and current pool
-      if(!prefix.isEmpty()) {
+      if (!prefix.isEmpty()) {
          writer.printf("%s.add(%s);\n", set, prefix.substring(0, prefix.length() - 1));
          writer.printf("%s.add(%s);\n", pool, prefix.substring(0, prefix.length() - 1));
-      } else {
+      }
+      else {
          writer.printf("%s.add(%s.this);\n", set, asset);
          writer.printf("%s.add(%s.this);\n", pool, asset);
       }
@@ -57,7 +59,13 @@ public class RecursiveConnection extends Connection {
       // Iterate the constructed set
       String iterator = decapitalize(asset) + "_" + RandomStringUtils.randomAlphabetic(5);
       writer.printf("for (%s %s : %s) {\n", asset, iterator, set);
-      prefix = iterator + ".";
+      if (!this.cast.isEmpty()) {
+         writer.printf("if (%s instanceof %s) {\n", iterator, cast);
+         prefix = String.format("((%s) %s).", cast, iterator);
+      }
+      else {
+         prefix = iterator + ".";
+      }
       return prefix;
    }
 
